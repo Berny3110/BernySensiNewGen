@@ -1,0 +1,23 @@
+{
+  "name": "MySensiPlan",
+  "short_name": "G+",
+  "description": "Une appli de suivi pour SensiPlan",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#1976d2",
+  "icons": [
+    {
+			"purpose": "maskable",
+			"sizes": "192x192",
+			"src": "maskable_icon_x192.png",
+			"type": "image/png"
+		},
+		{
+			"purpose": "maskable",
+			"sizes": "512x512",
+			"src": "maskable_icon_x512.png",
+			"type": "image/png"
+		}
+  ]
+}

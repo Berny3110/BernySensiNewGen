@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SensiTrack</title>
+    
+    <meta name="theme-color" content="#5c6bc0"> 
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+    <link rel="manifest" href="manifest.json">
+
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker enregistré !', reg))
+                    .catch(err => console.log('Échec enregistrement SW:', err));
+            });
+        }
+    </script>
+</head>
+<body>
+		<header>
+			<div class="datetime-controls">
+				<input type="date" id="global-date">
+				<input type="time" id="global-time">
+			</div>
+
+			<div class="cycle-info">
+				<span id="cycle-label"></span>
+				<input type="date" id="cycle-start-date" style="display:none;">
+			</div>
+
+			<div id="save-status"></div>
+			<button id="theme-toggle">🌙/☀️</button>
+
+		</header>
+
+
+    <main>
+        <nav class="tabs">
+            <button class="tab-btn active" data-target="temp-panel">Température</button>
+            <button class="tab-btn" data-target="mucus-panel">Glaire</button>
+            <button class="tab-btn" data-target="perturb-panel">Perturbations</button>
+            <button class="tab-btn" data-target="history-panel">Historique</button>
+        </nav>
+
+				<section id="temp-panel" class="panel active">
+						<div class="picker-container">
+								<div class="picker-highlight"></div>
+								<div class="wheel-col" id="wheel-int"></div>
+								<div class="wheel-separator">.</div>
+								<div class="wheel-col" id="wheel-dec1"></div>
+								<div class="wheel-col" id="wheel-dec2"></div>
+								
+								<div class="unit-label">°C</div>
+						</div>
+						
+						<div class="temp-display-large">
+								<span id="temp-value-display">--.--</span> °C
+						</div>
+						
+						<button id="btn-validate-temp" class="action-button">Valider la Température</button>
+						
+				</section>
+
+        <section id="mucus-panel" class="panel">
+            <div class="mucus-grid">
+                <div class="col">
+                    <h3>Sensation</h3>
+                    <label class="radio-card"><input type="radio" name="sensation" value="seche"> Sèche / Grattement</label>
+                    <label class="radio-card"><input type="radio" name="sensation" value="rien"> Rien ressenti</label>
+                    <label class="radio-card"><input type="radio" name="sensation" value="humide"> Humide</label>
+                    <label class="radio-card"><input type="radio" name="sensation" value="mouillee"> Mouillée</label>
+                    <label class="radio-card"><input type="radio" name="sensation" value="glissante"> Glissante / Lubrifiée</label>
+                </div>
+                <div class="col">
+                    <h3>Aspect</h3>
+                    <label class="radio-card"><input type="radio" name="aspect" value="rien"> Rien vu</label>
+                    <label class="radio-card"><input type="radio" name="aspect" value="cremeux"> Crémeux / Collant</label>
+                    <label class="radio-card"><input type="radio" name="aspect" value="jaunatre"> Jaunâtre / Collant</label>
+                    <label class="radio-card"><input type="radio" name="aspect" value="blanc_oeuf"> Blanc d'œuf / Filant</label>
+                </div>
+            </div>
+            <div class="result-box">
+                Code Sensiplan : <strong id="mucus-code-display">--</strong>
+            </div>
+						<button id="btn-validate-mucus" class="action-button">Valider glaire</button>
+
+        </section>
+				
+        <section id="perturb-panel" class="panel">
+            <div class="perturbations-list">
+                <label class="check-card"><input type="checkbox" id="p-sleep"> 💤 Manque de sommeil</label>
+                <label class="check-card"><input type="checkbox" id="p-alcohol"> 🍷 Alcool</label>
+                <label class="check-card"><input type="checkbox" id="p-illness"> 🤒 Maladie / Fièvre</label>
+                <label class="check-card"><input type="checkbox" id="p-stress"> ⚡ Stress</label>
+                <label class="check-card"><input type="checkbox" id="p-late"> ⏰ Prise tardive</label>
+            </div>
+            <p class="info-text">Cocher une case exclura potentiellement cette température de l'analyse automatique.</p>
+        </section>
+
+        <section id="history-panel" class="panel">
+            <div class="cycle-manager">
+                <h3>Gestion du Cycle</h3>
+                <div class="new-cycle-box">
+                    <label>Démarrer un cycle le :</label>
+                    <input type="date" id="new-cycle-date">
+                    <button id="btn-start-cycle" class="btn-outlined">Nouveau Cycle</button>
+                </div>
+            </div>
+            <hr>
+            <h3>Entrées de ce cycle</h3>
+            <ul id="history-list">
+                </ul>
+        </section>
+
+        <section class="chart-container">
+            <canvas id="cycleChart"></canvas>
+        </section>
+    </main>
+
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
