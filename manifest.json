@@ -1,23 +1,38 @@
 {
-  "name": "MySensiPlan",
-  "short_name": "G+",
-  "description": "Une appli de suivi pour SensiPlan",
-  "start_url": ".",
+  "lang": "fr-FR",
+  "name": "SensiTrack - Suivi SensiPlan",
+  "short_name": "SensiTrack",
+  "description": "Une application moderne de suivi pour la méthode SensiPlan.",
+  "id": "/sensitrack/",
+  "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#1976d2",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#5c6bc0",
   "icons": [
     {
-			"purpose": "maskable",
-			"sizes": "192x192",
-			"src": "maskable_icon_x192.png",
-			"type": "image/png"
-		},
-		{
-			"purpose": "maskable",
-			"sizes": "512x512",
-			"src": "maskable_icon_x512.png",
-			"type": "image/png"
-		}
+      "src": "maskable_icon_x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "maskable_icon_x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "maskable_icon_x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "maskable_icon_x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }

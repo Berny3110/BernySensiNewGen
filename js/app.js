@@ -6,5 +6,5 @@ document.addEventListener('DOMContentLoaded', () => {
     const dm = new DataManager();
     const chart = new ChartRenderer('cycleChart');
     const ui = new UIManager(dm, chart);
-		ui.init()
+    ui.init();
 });

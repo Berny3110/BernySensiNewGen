@@ -1,7 +1,10 @@
-self.addEventListener('install', (event) => {
-  self.skipWaiting();
-});
-
-self.addEventListener('fetch', (event) => {
-  // Nécessaire pour valider les critères PWA
-});
+const ASSETS = [
+  './',
+  './index.html',
+  './style.css',
+  './js/app.js',
+  './js/uiManager.js',
+  './js/dataManager.js',
+  './js/cycleComputer.js',
+  './js/chartRenderer.js'
+];
