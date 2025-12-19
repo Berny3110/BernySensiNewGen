@@ -266,3 +266,98 @@ input[type="date"], input[type="time"], select {
     background: white;
 }
 [data-theme="dark"] .chart-wrapper { background: #1e1e1e; }
+
+
+/* --- NOUVEAU STYLE GRAPHIQUE --- */
+
+/* Zone du bouton d'accès */
+.chart-action-zone {
+    padding: 20px 15px;
+}
+
+.btn-chart-access {
+    width: 100%;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    border: none;
+    border-radius: 16px;
+    padding: 20px;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 4px 15px rgba(92, 107, 192, 0.3);
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.btn-chart-access:active { transform: scale(0.98); }
+
+.chart-icon { font-size: 3rem; margin-bottom: 10px; }
+.chart-text { font-size: 1.2rem; font-weight: 800; }
+.chart-sub { font-size: 0.9rem; opacity: 0.9; margin-top: 5px; }
+
+/* OVERLAY PLEIN ÉCRAN */
+.chart-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: white;
+    z-index: 2000; /* Au-dessus de tout */
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-overlay.hidden { display: none; }
+
+.overlay-header {
+    height: 50px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 15px;
+    flex-shrink: 0;
+}
+
+.btn-close {
+    background: transparent;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.rotation-hint {
+    font-size: 0.8rem;
+    color: #888;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* CONTAINER SCROLLABLE POUR LE CANVAS */
+.canvas-scroll-container {
+    flex: 1;
+    overflow: auto; /* Permet le scroll dans les deux sens */
+    background: #fcfcfc;
+    position: relative;
+    /* On force un padding pour que le graph ne colle pas aux bords */
+    padding: 20px; 
+}
+
+#paperChartCanvas {
+    background: white;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    /* Pas de width/height CSS ici, géré par le JS pour le ratio */
+}
+
+/* Mode Sombre pour l'overlay */
+[data-theme="dark"] .chart-overlay, 
+[data-theme="dark"] .canvas-scroll-container {
+    background: #121212;
+}
+[data-theme="dark"] #paperChartCanvas {
+    background: #1e1e1e; /* Fond du papier sombre */
+}

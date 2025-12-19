@@ -1,10 +1,10 @@
 import { CycleComputer } from './cycleComputer.js';
 import { WheelManager } from './wheelManager.js';
+import { PaperRenderer } from './paperRenderer.js';
 
 export class UIManager {
-		constructor(dataManager, chartRenderer) {
+		constructor(dataManager) {
 				this.dm = dataManager;
-				this.chart = chartRenderer;
 				
 				// Valeurs par défaut demandées : 36.30
 				this.tempInt = 36;
@@ -13,6 +13,7 @@ export class UIManager {
 		}
 
     init() {
+				this.paperChart = new PaperRenderer('paperChartCanvas');
         this.cacheDOM();
 				this.setCurrentDateTime();
         this.initWheels();
@@ -20,6 +21,7 @@ export class UIManager {
         this.initInputs();
         this.initCycleManager();
         this.initTheme();
+				this.initChartOverlay();
         
         // Bouton de validation Température
         const btnTemp = document.getElementById('btn-validate-temp');
@@ -59,6 +61,9 @@ export class UIManager {
                 ]
             }
         };
+				this.dom.overlay = document.getElementById('full-screen-chart-overlay');
+        this.dom.btnOpenChart = document.getElementById('btn-open-chart');
+        this.dom.btnCloseChart = document.getElementById('btn-close-chart');
     }
 
     // --- GESTION TEMPERATURE ---
@@ -153,6 +158,28 @@ export class UIManager {
         this.dm.saveEntry(entry);
         this.refreshAll();
     }
+		
+		initChartOverlay() {
+        if (this.dom.btnOpenChart) {
+            this.dom.btnOpenChart.addEventListener('click', () => {
+                this.dom.overlay.classList.remove('hidden');
+                // On force un rendu frais quand on ouvre
+                this.updateGlobalUI(); 
+                
+                // Petit hack UX : Scroll horizontal vers la fin du cycle
+                setTimeout(() => {
+                    const container = document.querySelector('.canvas-scroll-container');
+                    container.scrollLeft = container.scrollWidth;
+                }, 100);
+            });
+        }
+
+        if (this.dom.btnCloseChart) {
+            this.dom.btnCloseChart.addEventListener('click', () => {
+                this.dom.overlay.classList.add('hidden');
+            });
+        }
+    }
 
     // --- GESTION GLAIRE & INFOS ---
 		initInputs() {
@@ -163,7 +190,6 @@ export class UIManager {
 				if(this.dom.btnValidateMucus) {
 						this.dom.btnValidateMucus.addEventListener('click', () => {
 								this.saveMucus();
-								alert("Glaire enregistrée !"); // Petit feedback optionnel
 						});
 				}
 
@@ -294,12 +320,16 @@ export class UIManager {
         this.updateGlobalUI();
     }
 
-    updateGlobalUI() {
-        const cycle = this.dm.getCurrentCycle();
-        const analysis = CycleComputer.analyzeCycle(cycle);
-        this.chart.render(cycle, analysis);
-        this.updateHistoryList(cycle);
-    }
+		updateGlobalUI() {
+						const cycle = this.dm.getCurrentCycle();
+						const analysis = CycleComputer.analyzeCycle(cycle);
+						
+						if (this.paperChart) {
+								this.paperChart.render(cycle, analysis);
+						}
+						
+						this.updateHistoryList(cycle);
+				}
 
     updateHistoryList(cycle) {
         if(!this.dom.historyList) return;

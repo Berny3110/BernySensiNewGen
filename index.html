@@ -118,9 +118,23 @@
             <ul id="history-list"></ul>
         </section>
 
-        <div class="chart-wrapper">
-            <canvas id="cycleChart"></canvas>
-        </div>
+				<div class="chart-action-zone">
+						<button id="btn-open-chart" class="btn-chart-access">
+								<span class="chart-icon">📈</span>
+								<span class="chart-text">Voir mon graphique complet</span>
+								<span class="chart-sub">Mode paysage</span>
+						</button>
+				</div>
+
+				<div id="full-screen-chart-overlay" class="chart-overlay hidden">
+						<div class="overlay-header">
+								<button id="btn-close-chart" class="btn-close">✕ Fermer</button>
+								<div class="rotation-hint">Pivotez votre écran ↻</div>
+						</div>
+						<div class="canvas-scroll-container">
+								<canvas id="paperChartCanvas"></canvas>
+						</div>
+				</div>
     </main>
 
     <script type="module" src="js/app.js"></script>
