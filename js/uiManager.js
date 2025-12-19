@@ -159,27 +159,39 @@ export class UIManager {
         this.refreshAll();
     }
 		
+		// Dans js/uiManager.js, modifiez la fonction initChartOverlay :
 		initChartOverlay() {
-        if (this.dom.btnOpenChart) {
-            this.dom.btnOpenChart.addEventListener('click', () => {
-                this.dom.overlay.classList.remove('hidden');
-                // On force un rendu frais quand on ouvre
-                this.updateGlobalUI(); 
-                
-                // Petit hack UX : Scroll horizontal vers la fin du cycle
-                setTimeout(() => {
-                    const container = document.querySelector('.canvas-scroll-container');
-                    container.scrollLeft = container.scrollWidth;
-                }, 100);
-            });
-        }
+				if (this.dom.btnOpenChart) {
+						this.dom.btnOpenChart.addEventListener('click', async () => {
+								this.dom.overlay.classList.remove('hidden');
+								this.updateGlobalUI(); 
 
-        if (this.dom.btnCloseChart) {
-            this.dom.btnCloseChart.addEventListener('click', () => {
-                this.dom.overlay.classList.add('hidden');
-            });
-        }
-    }
+								// Tenter de forcer le paysage sur Android/Chrome
+								if (screen.orientation && screen.orientation.lock) {
+										try {
+												await screen.orientation.lock('landscape');
+										} catch (err) {
+												console.log("La rotation forcée a été bloquée ou n'est pas supportée.");
+										}
+								}
+								
+								// Scroll auto vers la fin du cycle
+								setTimeout(() => {
+										const container = document.querySelector('.canvas-scroll-container');
+										if(container) container.scrollLeft = container.scrollWidth;
+								}, 150);
+						});
+				}
+
+				if (this.dom.btnCloseChart) {
+						this.dom.btnCloseChart.addEventListener('click', () => {
+								if (screen.orientation && screen.orientation.unlock) {
+										screen.orientation.unlock();
+								}
+								this.dom.overlay.classList.add('hidden');
+						});
+				}
+		}
 
     // --- GESTION GLAIRE & INFOS ---
 		initInputs() {
