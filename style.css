@@ -103,9 +103,12 @@ input[type="date"], input[type="time"], select {
     display: flex;
     background: var(--bg-card);
     padding: 5px;
-    position: sticky;
-    top: calc(var(--header-h) + 85px); /* Ajustement dynamique */
+    /* On enlève sticky et top pour que la barre scrolle avec le reste */
+    position: relative; 
+    top: auto;
     z-index: 900;
+    margin-bottom: 10px; /* Petit espace sous la barre */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
 .tab-btn {
