@@ -51,9 +51,20 @@
 										<button id="btn-edit-cycle-date" class="btn-mini" title="Modifier date cycle">📅</button>
 										<button id="btn-add-cycle-main" class="btn-mini btn-primary" title="Nouveau cycle">➕</button>
 								</div>
-</div>
+						</div>
         </div>
         <div id="cycle-info-display" class="cycle-badge">Chargement...</div>
+				
+				<div style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px;">
+						<button id="btn-enable-autosave" class="btn-mini" style="width:100%; border-color: var(--primary); color: var(--primary);">
+								💾 Activer sauvegarde auto (Fichier)
+						</button>
+						<div id="autosave-msg" style="font-size: 0.75rem; color: green; margin-top: 5px; display:none;">
+								✅ Sauvegarde auto active
+						</div>
+				</div>
+				
+				
     </section>
 
     <nav class="tab-bar">
@@ -99,6 +110,17 @@
 						</div>
 
 						<button id="btn-validate-mucus" class="btn-main-action" style="margin-top:20px;">Valider Glaire</button>
+						
+						<h3>Saignements (ce jour)</h3>
+						<div class="mucus-grid">
+								<label class="radio-card"><input type="radio" name="bleeding" value=""> ∅ Rien</label>
+								<label class="radio-card"><input type="radio" name="bleeding" value="spotting"> 🩸 Spotting (Gouttes)</label>
+								<label class="radio-card"><input type="radio" name="bleeding" value="light"> 🩸 Léger</label>
+								<label class="radio-card"><input type="radio" name="bleeding" value="medium"> 🩸🩸 Moyen</label>
+								<label class="radio-card"><input type="radio" name="bleeding" value="heavy"> 🩸🩸🩸 Abondant</label>
+						</div>
+						<hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+
 				</section>
 
         <section id="perturb-panel" class="panel">

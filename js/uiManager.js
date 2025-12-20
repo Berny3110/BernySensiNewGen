@@ -3,33 +3,33 @@ import { WheelManager } from './wheelManager.js';
 import { PaperRenderer } from './paperRenderer.js';
 
 export class UIManager {
-		constructor(dataManager) {
-				this.dm = dataManager;
-				
-				// Valeurs par défaut demandées : 36.30
-				this.tempInt = 36;
-				this.tempDec1 = 3;
-				this.tempDec2 = 0;
-		}
+    constructor(dataManager) {
+        this.dm = dataManager;
+        this.tempInt = 36;
+        this.tempDec1 = 3;
+        this.tempDec2 = 0;
+    }
 
     init() {
-				this.paperChart = new PaperRenderer('paperChartCanvas');
+        this.paperChart = new PaperRenderer('paperChartCanvas');
         this.cacheDOM();
-				this.setCurrentDateTime();
+        this.setCurrentDateTime();
         this.initWheels();
         this.initTabs();
         this.initInputs();
-        this.initCycleManager();
+        this.initCycleManager(); // Gestionnaire de cycle
         this.initTheme();
-				this.initChartOverlay();
+        this.initChartOverlay();
         
-        // Bouton de validation Température
         const btnTemp = document.getElementById('btn-validate-temp');
-        if(btnTemp) {
-            btnTemp.addEventListener('click', () => this.validateTemperature());
-        }
+        if(btnTemp) btnTemp.addEventListener('click', () => this.validateTemperature());
+				
+				if(this.dom.btnValidateMucus) {
+						this.dom.btnValidateMucus.addEventListener('click', () => this.validateMucus());
+				}
 
-        this.loadDataForCurrentDate();
+        // CORRECTION BUG CHARGEMENT : On force le rafraichissement total dès le début
+        this.refreshAll();
     }
 
     cacheDOM() {
@@ -42,6 +42,7 @@ export class UIManager {
             tempDisplay: document.getElementById('temp-val-display'),
             cycleSelector: document.getElementById('cycle-selector-ui'),
             cycleInfo: document.getElementById('cycle-info-display'),
+						btnDeleteCycle: document.getElementById('btn-delete-cycle'),
             btnAddCycle: document.getElementById('btn-add-cycle-main'),
             btnEditCycle: document.getElementById('btn-edit-cycle-date'),
             datePickerHidden: document.getElementById('cycle-start-edit-picker'),
@@ -60,11 +61,46 @@ export class UIManager {
                     document.getElementById('p-late')
                 ]
             }
+						
         };
+				
+				if(!document.getElementById('btn-delete-cycle')) {
+						const container = document.querySelector('.cycle-actions');
+						if(container) {
+								const btnDel = document.createElement('button');
+								btnDel.id = 'btn-delete-cycle';
+								btnDel.className = 'btn-mini';
+								btnDel.style.borderColor = 'red';
+								btnDel.style.color = 'red';
+								btnDel.innerHTML = '🗑️';
+								container.appendChild(btnDel);
+								this.dom.btnDeleteCycle = btnDel;
+						}
+					}	
+				
 				this.dom.overlay = document.getElementById('full-screen-chart-overlay');
         this.dom.btnOpenChart = document.getElementById('btn-open-chart');
         this.dom.btnCloseChart = document.getElementById('btn-close-chart');
+
     }
+		
+		
+		validateMucus() {
+				const sensation = document.querySelector('input[name="sensation"]:checked')?.value;
+				const aspect = document.querySelector('input[name="aspect"]:checked')?.value;
+				const flow = document.querySelector('input[name="flow"]:checked')?.value; // Nouvelle ligne
+
+				const date = this.dom.date.value;
+				
+				this.dm.saveEntry({
+						date: date,
+						mucusSensation: sensation,
+						mucusAspect: aspect,
+						bleedingFlow: flow // On enregistre le flux
+				});
+
+				this.refreshAll();
+		}
 
     // --- GESTION TEMPERATURE ---
 		setCurrentDateTime() {
@@ -209,7 +245,42 @@ export class UIManager {
 				[...this.dom.inputs.perturbations, this.dom.manualExclude].forEach(i => {
 						if(i) i.addEventListener('change', () => this.saveMisc());
 				});
+				
+				// GESTION DU BOUTON SAUVEGARDE AUTO
+				const btnAutoSave = document.getElementById('btn-enable-autosave');
+				const msgAutoSave = document.getElementById('autosave-msg');
+
+				if (btnAutoSave) {
+						btnAutoSave.addEventListener('click', async () => {
+								const success = await this.dm.enableNativeAutoSave();
+								if (success) {
+										btnAutoSave.style.display = 'none';
+										if(msgAutoSave) {
+												msgAutoSave.style.display = 'block';
+												msgAutoSave.textContent = "✅ Fichier lié : Sauvegarde automatique active";
+										}
+								}
+						});
+				}
+				
+				const bleedingRadios = document.querySelectorAll('input[name="bleeding"]');
+        bleedingRadios.forEach(r => {
+            r.addEventListener('click', () => { // Click permet de déselectionner si besoin
+               this.saveBleeding();
+            });
+        });
 		}
+		
+		saveBleeding() {
+        const val = document.querySelector('input[name="bleeding"]:checked')?.value;
+        // Si c'est 'spotting', on l'enregistre. Si c'est 'menses', on pourrait proposer nouveau cycle
+        // Pour l'instant on enregistre juste la donnée.
+        this.dm.saveEntry({
+            date: document.getElementById('global-date').value,
+            bleeding: val
+        });
+        this.refreshAll();
+    }
 
     saveMucus() {
         const sensation = document.querySelector('input[name="sensation"]:checked')?.value;
@@ -266,6 +337,14 @@ export class UIManager {
 								}
 						});
 				}
+				
+				if (this.dom.btnDeleteCycle) {
+            this.dom.btnDeleteCycle.addEventListener('click', () => {
+                if(this.dm.deleteCurrentCycle()) {
+                    this.refreshAll();
+                }
+            });
+        }
 
 				if (this.dom.cycleSelector) {
 						this.dom.cycleSelector.addEventListener('change', (e) => {
