@@ -1,4 +1,3 @@
-// js/paperRenderer.js
 export class PaperRenderer {
     constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
@@ -9,7 +8,7 @@ export class PaperRenderer {
             headerHeight: 80,
             footerHeight: 60,
             tempMin: 36.0,
-            tempMax: 37.5, // Augmenté un peu pour la marge
+            tempMax: 37.0, // CORRECTION : 37°C max au lieu de 37.5
             gridHeight: 300,
             paddingLeft: 40,
             colors: {
@@ -19,18 +18,46 @@ export class PaperRenderer {
                 tempDot: '#000000',
                 text: '#333333',
                 coverLine: '#00bfa5',
-                peak: '#ff4081'
+                peak: '#ff4081',
+                bleeding: '#d32f2f'
             }
         };
+        
+        // Détection du mode sombre
+        this.updateThemeColors();
+    }
+    
+    updateThemeColors() {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        
+        if (isDark) {
+            // Mode sombre : arrière-plan plus clair pour meilleur contraste
+            this.config.colors.background = '#2a2a2a'; // Gris foncé mais lisible
+            this.config.colors.grid = '#4a4a4a';
+            this.config.colors.gridStrong = '#666666';
+            this.config.colors.text = '#e0e0e0';
+            this.config.colors.tempLine = '#64b5f6';
+            this.config.colors.tempDot = '#ffffff';
+        } else {
+            // Mode clair
+            this.config.colors.background = '#ffffff';
+            this.config.colors.grid = '#e0e0e0';
+            this.config.colors.gridStrong = '#9e9e9e';
+            this.config.colors.text = '#333333';
+            this.config.colors.tempLine = '#2962ff';
+            this.config.colors.tempDot = '#000000';
+        }
     }
 
     render(cycle, analysis) {
         if (!cycle || !cycle.entries) return;
         
-        // 1. Récupération sécurisée des entrées
-        const entries = cycle.entries;
+        // Mise à jour des couleurs selon le thème actuel
+        this.updateThemeColors();
+        
+        const entries = [...cycle.entries].sort((a, b) => new Date(a.date) - new Date(b.date));
 
-        // 2. Calculs de dimensions
+        // Calculs de dimensions
         const daysCount = Math.max(40, entries.length + 2);
         const baseWidth = this.config.paddingLeft + (daysCount * this.config.dayWidth);
         const baseHeight = this.config.headerHeight + this.config.gridHeight + this.config.footerHeight;
@@ -51,45 +78,19 @@ export class PaperRenderer {
         this.ctx.setTransform(1, 0, 0, 1, 0, 0); 
         this.ctx.scale(dpr * scale, dpr * scale);
 
-        this.ctx.clearRect(0, 0, baseWidth, baseHeight);
+        // Fond de couleur selon le thème
+        this.ctx.fillStyle = this.config.colors.background;
+        this.ctx.fillRect(0, 0, baseWidth, baseHeight);
+        
         this.ctx.font = "12px sans-serif";
         this.ctx.fillStyle = this.config.colors.text;
 
-        // 3. Dessin des éléments de base
+        // Dessin des éléments
         this.drawGrid(daysCount, baseWidth);
-        this.drawData(cycle, analysis);
-        
-        // 4. DESSIN DES SAIGNEMENTS (CORRIGÉ)
-        entries.forEach((e, index) => {
-            // On vérifie bleedingFlow (nom utilisé dans votre saveEntry)
-            if (!e.bleedingFlow || e.bleedingFlow === 'none') return;
-
-            // CORRECTION ICI : Ajout de 'this.' devant config
-            const xCenter = this.config.paddingLeft + (index * this.config.dayWidth) + (this.config.dayWidth / 2);
-            const yBaseline = this.config.headerHeight + this.config.gridHeight + 25; 
-            
-            this.ctx.fillStyle = "#d32f2f"; // Rouge Sensiplan
-            
-            switch(e.bleedingFlow) {
-                case 'spotting':
-                    this.ctx.beginPath();
-                    this.ctx.arc(xCenter, yBaseline, 2, 0, Math.PI * 2);
-                    this.ctx.fill();
-                    break;
-                case 'light':
-                    this.ctx.fillRect(xCenter - 1, yBaseline - 5, 2, 10);
-                    break;
-                case 'medium':
-                    this.ctx.fillRect(xCenter - 3, yBaseline - 8, 6, 16);
-                    break;
-                case 'heavy':
-                    this.ctx.fillRect(xCenter - 5, yBaseline - 10, 10, 20);
-                    break;
-            }
-        });
+        this.drawData(cycle, analysis, entries);
+        this.drawBleeding(entries); // NOUVEAU : Dessin des saignements
     }
 
-    // ... (Le reste des méthodes getYForTemp, drawGrid, drawData ne change pas) ...
     getYForTemp(temp) {
         if (temp > this.config.tempMax) temp = this.config.tempMax;
         if (temp < this.config.tempMin) temp = this.config.tempMin;
@@ -106,6 +107,7 @@ export class PaperRenderer {
         ctx.beginPath();
         ctx.lineWidth = 1;
 
+        // Grille horizontale (températures)
         for (let t = config.tempMin * 10; t <= config.tempMax * 10; t++) {
             const temp = t / 10;
             const y = this.getYForTemp(temp);
@@ -118,10 +120,12 @@ export class PaperRenderer {
             ctx.beginPath(); 
 
             if (isMain) {
+                ctx.fillStyle = config.colors.text;
                 ctx.fillText(temp.toFixed(1), 5, y + 4);
             }
         }
 
+        // Grille verticale (jours)
         ctx.strokeStyle = config.colors.grid;
         for (let i = 0; i <= daysCount; i++) {
             const x = config.paddingLeft + (i * config.dayWidth);
@@ -131,11 +135,13 @@ export class PaperRenderer {
             ctx.beginPath();
 
             if (i > 0 && i <= daysCount) {
+                ctx.fillStyle = config.colors.text;
                 ctx.fillText(i, x - (config.dayWidth / 2) - 4, bottomY + 20);
             }
         }
 
-        ctx.strokeStyle = '#000';
+        // Bordures principales
+        ctx.strokeStyle = config.colors.gridStrong;
         ctx.lineWidth = 2;
         ctx.moveTo(0, config.headerHeight);
         ctx.lineTo(totalWidth, config.headerHeight);
@@ -144,9 +150,8 @@ export class PaperRenderer {
         ctx.stroke();
     }
 
-    drawData(cycle, analysis) {
+    drawData(cycle, analysis, entries) {
         const { ctx, config } = this;
-        const entries = [...cycle.entries].sort((a, b) => new Date(a.date) - new Date(b.date));
         
         let prevPoint = null;
 
@@ -158,11 +163,11 @@ export class PaperRenderer {
             const dateStr = `${d.getDate()}/${d.getMonth() + 1}`;
             ctx.save();
             ctx.font = "10px sans-serif";
-            ctx.fillStyle = "#666";
+            ctx.fillStyle = config.colors.text;
             ctx.fillText(dateStr, xCenter - 12, config.headerHeight + config.gridHeight + 40);
             ctx.restore();
 
-            // GLAIRE
+            // GLAIRE (symboles)
             let mucusCode = "";
             if(e.mucusAspect === 'blanc_oeuf') mucusCode = "🥚";
             else if(e.mucusAspect === 'jaunatre') mucusCode = "🟡";
@@ -171,6 +176,7 @@ export class PaperRenderer {
             
             if(mucusCode) {
                 ctx.font = "16px sans-serif";
+                ctx.fillStyle = config.colors.text;
                 ctx.fillText(mucusCode, xCenter - 8, config.headerHeight - 10);
             }
 
@@ -178,6 +184,7 @@ export class PaperRenderer {
             if (e.temp && !e.excludeTemp) {
                 const y = this.getYForTemp(e.temp);
 
+                // CORRECTION : Tracer la ligne seulement s'il y a un point précédent
                 if (prevPoint) {
                     ctx.beginPath();
                     ctx.strokeStyle = config.colors.tempLine;
@@ -187,6 +194,7 @@ export class PaperRenderer {
                     ctx.stroke();
                 }
 
+                // Point de température
                 ctx.beginPath();
                 ctx.fillStyle = config.colors.tempDot;
                 
@@ -199,22 +207,58 @@ export class PaperRenderer {
 
                 prevPoint = { x: xCenter, y: y };
             } else {
+                // CORRECTION : Créer un "trou" si pas de température
                 prevPoint = null;
-                if(e.excludeTemp) {
+                
+                if(e.excludeTemp && e.temp) {
+                    ctx.fillStyle = config.colors.text;
                     ctx.fillText("X", xCenter - 4, this.getYForTemp(e.temp || 36.5));
                 }
             }
         });
 
-        // COVERLINE
+        // COVERLINE (ligne de base)
         if (analysis && analysis.coverLine) {
             const yCover = this.getYForTemp(analysis.coverLine);
             ctx.beginPath();
             ctx.strokeStyle = config.colors.coverLine;
             ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
             ctx.moveTo(config.paddingLeft, yCover);
             ctx.lineTo(config.paddingLeft + (entries.length * config.dayWidth), yCover);
             ctx.stroke();
+            ctx.setLineDash([]);
         }
+    }
+
+    // NOUVEAU : Dessin des saignements
+    drawBleeding(entries) {
+        const { ctx, config } = this;
+        
+        entries.forEach((e, index) => {
+            if (!e.bleeding || e.bleeding === 'none') return;
+
+            const xCenter = config.paddingLeft + (index * config.dayWidth) + (config.dayWidth / 2);
+            const yBaseline = config.headerHeight + config.gridHeight + 25; 
+            
+            ctx.fillStyle = config.colors.bleeding;
+            
+            switch(e.bleeding) {
+                case 'spotting':
+                    ctx.beginPath();
+                    ctx.arc(xCenter, yBaseline, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+                case 'light':
+                    ctx.fillRect(xCenter - 2, yBaseline - 6, 4, 12);
+                    break;
+                case 'medium':
+                    ctx.fillRect(xCenter - 4, yBaseline - 10, 8, 20);
+                    break;
+                case 'heavy':
+                    ctx.fillRect(xCenter - 6, yBaseline - 12, 12, 24);
+                    break;
+            }
+        });
     }
 }

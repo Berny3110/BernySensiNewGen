@@ -17,18 +17,17 @@ export class UIManager {
         this.initWheels();
         this.initTabs();
         this.initInputs();
-        this.initCycleManager(); // Gestionnaire de cycle
+        this.initCycleManager();
         this.initTheme();
         this.initChartOverlay();
         
         const btnTemp = document.getElementById('btn-validate-temp');
         if(btnTemp) btnTemp.addEventListener('click', () => this.validateTemperature());
-				
-				if(this.dom.btnValidateMucus) {
-						this.dom.btnValidateMucus.addEventListener('click', () => this.validateMucus());
-				}
+        
+        if(this.dom.btnValidateMucus) {
+            this.dom.btnValidateMucus.addEventListener('click', () => this.validateMucus());
+        }
 
-        // CORRECTION BUG CHARGEMENT : On force le rafraichissement total dès le début
         this.refreshAll();
     }
 
@@ -42,17 +41,21 @@ export class UIManager {
             tempDisplay: document.getElementById('temp-val-display'),
             cycleSelector: document.getElementById('cycle-selector-ui'),
             cycleInfo: document.getElementById('cycle-info-display'),
-						btnDeleteCycle: document.getElementById('btn-delete-cycle'),
+            btnDeleteCycle: document.getElementById('btn-delete-cycle'),
             btnAddCycle: document.getElementById('btn-add-cycle-main'),
             btnEditCycle: document.getElementById('btn-edit-cycle-date'),
             datePickerHidden: document.getElementById('cycle-start-edit-picker'),
             manualExclude: document.getElementById('manual-exclude-temp'),
             historyList: document.getElementById('history-list'),
-						newCyclePicker: document.getElementById('new-cycle-picker'),
-						btnValidateMucus: document.getElementById('btn-validate-mucus'),
+            newCyclePicker: document.getElementById('new-cycle-picker'),
+            btnValidateMucus: document.getElementById('btn-validate-mucus'),
+            overlay: document.getElementById('full-screen-chart-overlay'),
+            btnOpenChart: document.getElementById('btn-open-chart'),
+            btnCloseChart: document.getElementById('btn-close-chart'),
             inputs: {
-                sensation: document.querySelectorAll('input[name="sensation"]'),
-                aspect: document.querySelectorAll('input[name="aspect"]'),
+                sensation: document.querySelectorAll('input[name="mucus-sensation"]'),
+                aspect: document.querySelectorAll('input[name="mucus-aspect"]'),
+                bleeding: document.querySelectorAll('input[name="bleeding"]'),
                 perturbations: [
                     document.getElementById('p-sleep'),
                     document.getElementById('p-alcohol'),
@@ -61,127 +64,79 @@ export class UIManager {
                     document.getElementById('p-late')
                 ]
             }
-						
         };
-				
-				if(!document.getElementById('btn-delete-cycle')) {
-						const container = document.querySelector('.cycle-actions');
-						if(container) {
-								const btnDel = document.createElement('button');
-								btnDel.id = 'btn-delete-cycle';
-								btnDel.className = 'btn-mini';
-								btnDel.style.borderColor = 'red';
-								btnDel.style.color = 'red';
-								btnDel.innerHTML = '🗑️';
-								container.appendChild(btnDel);
-								this.dom.btnDeleteCycle = btnDel;
-						}
-					}	
-				
-				this.dom.overlay = document.getElementById('full-screen-chart-overlay');
-        this.dom.btnOpenChart = document.getElementById('btn-open-chart');
-        this.dom.btnCloseChart = document.getElementById('btn-close-chart');
-
     }
-		
-		
-		validateMucus() {
-				const sensation = document.querySelector('input[name="sensation"]:checked')?.value;
-				const aspect = document.querySelector('input[name="aspect"]:checked')?.value;
-				const flow = document.querySelector('input[name="flow"]:checked')?.value; // Nouvelle ligne
+    
+    // CORRECTION : Logique exclusive saignements OU glaire
+    validateMucus() {
+        const bleeding = document.querySelector('input[name="bleeding"]:checked')?.value || 'none';
+        const sensation = document.querySelector('input[name="mucus-sensation"]:checked')?.value;
+        const aspect = document.querySelector('input[name="mucus-aspect"]:checked')?.value;
 
-				const date = this.dom.date.value;
-				
-				this.dm.saveEntry({
-						date: date,
-						mucusSensation: sensation,
-						mucusAspect: aspect,
-						bleedingFlow: flow // On enregistre le flux
-				});
+        const entryData = {
+            date: this.dom.date.value
+        };
 
-				this.refreshAll();
-		}
-
-    // --- GESTION TEMPERATURE ---
-		setCurrentDateTime() {
-				const now = new Date();
-				
-				// Format YYYY-MM-DD pour l'input date
-				const dateStr = now.toISOString().split('T')[0];
-				this.dom.date.value = dateStr;
-				
-				// Format HH:MM pour l'input time
-				const hours = String(now.getHours()).padStart(2, '0');
-				const minutes = String(now.getMinutes()).padStart(2, '0');
-				this.dom.time.value = `${hours}:${minutes}`;
-		}
-
-		initWheels() {
-				const updateDisplay = () => {
-						this.dom.tempDisplay.textContent = `${this.tempInt}.${this.tempDec1}${this.tempDec2}°C`;
-				};
-
-				this.wheelInt = new WheelManager({
-						element: this.dom.wheelInt,
-						min: 35, max: 39, currentValue: 36, isRepeating: false
-				}, (v) => { this.tempInt = v; updateDisplay(); });
-
-				this.wheelDec1 = new WheelManager({
-						element: this.dom.wheelDec1,
-						min: 0, max: 9, currentValue: 3, isRepeating: true
-				}, (v) => { this.tempDec1 = v; updateDisplay(); });
-
-				this.wheelDec2 = new WheelManager({
-						element: this.dom.wheelDec2,
-						min: 0, max: 9, currentValue: 0, isRepeating: true
-				}, (v) => { this.tempDec2 = v; updateDisplay(); });
-				
-				updateDisplay();
-		}
-
-    createWheel(container, min, max, active) {
-        if(!container) return;
-        container.innerHTML = '<div></div>'; // Padding
-        for (let i = min; i <= max; i++) {
-            const el = document.createElement('div');
-            el.textContent = i;
-            el.dataset.val = i;
-            container.appendChild(el);
+        // Logique exclusive : soit saignements, soit glaire
+        if (bleeding && bleeding !== 'none') {
+            // Mode saignement : on sauvegarde uniquement le bleeding
+            entryData.bleeding = bleeding;
+            // On efface les données de glaire s'il y en avait
+            entryData.mucusSensation = null;
+            entryData.mucusAspect = null;
+        } else {
+            // Mode glaire : on sauvegarde sensation et aspect
+            if (sensation) entryData.mucusSensation = sensation;
+            if (aspect) entryData.mucusAspect = aspect;
+            entryData.bleeding = 'none';
         }
-        container.innerHTML += '<div></div>'; // Padding
+
+        const success = this.dm.saveEntry(entryData);
+        
+        if (success) {
+            const btn = this.dom.btnValidateMucus;
+            const originalText = btn.innerText;
+            btn.innerText = "✓ Enregistré !";
+            setTimeout(() => btn.innerText = originalText, 1000);
+            
+            if (navigator.vibrate) navigator.vibrate(50);
+            this.refreshAll();
+        } else {
+            alert('Erreur : date invalide');
+        }
     }
 
-    onWheelScroll(wheel) {
-        clearTimeout(wheel.scrollTimeout);
-        wheel.scrollTimeout = setTimeout(() => {
-            const items = wheel.querySelectorAll('div[data-val]');
-            let closest = null;
-            let minDist = Infinity;
-            const center = wheel.scrollTop + (wheel.clientHeight / 2);
-
-            items.forEach(item => {
-                const dist = Math.abs((item.offsetTop + item.clientHeight / 2) - center);
-                if (dist < minDist) {
-                    minDist = dist;
-                    closest = item;
-                }
-            });
-
-            if (closest) {
-                wheel.scrollTo({ top: closest.offsetTop - (wheel.clientHeight / 2) + (closest.clientHeight / 2), behavior: 'smooth' });
-                const val = parseInt(closest.dataset.val);
-                if (wheel === this.dom.wheelInt) this.tempInt = val;
-                if (wheel === this.dom.wheelDec1) this.tempDec1 = val;
-                if (wheel === this.dom.wheelDec2) this.tempDec2 = val;
-                this.updateTempDisplay();
-            }
-        }, 100);
+    setCurrentDateTime() {
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0];
+        this.dom.date.value = dateStr;
+        
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        this.dom.time.value = `${hours}:${minutes}`;
     }
 
-    updateTempDisplay() {
-        if (this.dom.tempDisplay) {
+    initWheels() {
+        const updateDisplay = () => {
             this.dom.tempDisplay.textContent = `${this.tempInt}.${this.tempDec1}${this.tempDec2}°C`;
-        }
+        };
+
+        this.wheelInt = new WheelManager({
+            element: this.dom.wheelInt,
+            min: 35, max: 39, currentValue: 36, isRepeating: false
+        }, (v) => { this.tempInt = v; updateDisplay(); });
+
+        this.wheelDec1 = new WheelManager({
+            element: this.dom.wheelDec1,
+            min: 0, max: 9, currentValue: 3, isRepeating: true
+        }, (v) => { this.tempDec1 = v; updateDisplay(); });
+
+        this.wheelDec2 = new WheelManager({
+            element: this.dom.wheelDec2,
+            min: 0, max: 9, currentValue: 0, isRepeating: true
+        }, (v) => { this.tempDec2 = v; updateDisplay(); });
+        
+        updateDisplay();
     }
 
     validateTemperature() {
@@ -191,106 +146,91 @@ export class UIManager {
             time: this.dom.time.value,
             temp: temp
         };
-        this.dm.saveEntry(entry);
-        this.refreshAll();
+        
+        const success = this.dm.saveEntry(entry);
+        if (success) {
+            this.refreshAll();
+        } else {
+            alert('Erreur : date invalide');
+        }
     }
-		
-		// Dans js/uiManager.js, modifiez la fonction initChartOverlay :
-		initChartOverlay() {
-				if (this.dom.btnOpenChart) {
-						this.dom.btnOpenChart.addEventListener('click', async () => {
-								this.dom.overlay.classList.remove('hidden');
-								this.updateGlobalUI(); 
+    
+    initChartOverlay() {
+        if (this.dom.btnOpenChart) {
+            this.dom.btnOpenChart.addEventListener('click', async () => {
+                this.dom.overlay.classList.remove('hidden');
+                this.updateGlobalUI(); 
 
-								// Tenter de forcer le paysage sur Android/Chrome
-								if (screen.orientation && screen.orientation.lock) {
-										try {
-												await screen.orientation.lock('landscape');
-										} catch (err) {
-												console.log("La rotation forcée a été bloquée ou n'est pas supportée.");
-										}
-								}
-								
-								// Scroll auto vers la fin du cycle
-								setTimeout(() => {
-										const container = document.querySelector('.canvas-scroll-container');
-										if(container) container.scrollLeft = container.scrollWidth;
-								}, 150);
-						});
-				}
-
-				if (this.dom.btnCloseChart) {
-						this.dom.btnCloseChart.addEventListener('click', () => {
-								if (screen.orientation && screen.orientation.unlock) {
-										screen.orientation.unlock();
-								}
-								this.dom.overlay.classList.add('hidden');
-						});
-				}
-		}
-
-    // --- GESTION GLAIRE & INFOS ---
-		initInputs() {
-				this.dom.date.addEventListener('change', () => this.loadDataForCurrentDate());
-				
-				// On retire les écouteurs 'change' sur les radios de glaire
-				// On ajoute l'écouteur sur le bouton Valider
-				if(this.dom.btnValidateMucus) {
-						this.dom.btnValidateMucus.addEventListener('click', () => {
-								this.saveMucus();
-						});
-				}
-
-				// Les perturbations restent en auto-save (c'est plus pratique pour des checkbox)
-				[...this.dom.inputs.perturbations, this.dom.manualExclude].forEach(i => {
-						if(i) i.addEventListener('change', () => this.saveMisc());
-				});
-				
-				// GESTION DU BOUTON SAUVEGARDE AUTO
-				const btnAutoSave = document.getElementById('btn-enable-autosave');
-				const msgAutoSave = document.getElementById('autosave-msg');
-
-				if (btnAutoSave) {
-						btnAutoSave.addEventListener('click', async () => {
-								const success = await this.dm.enableNativeAutoSave();
-								if (success) {
-										btnAutoSave.style.display = 'none';
-										if(msgAutoSave) {
-												msgAutoSave.style.display = 'block';
-												msgAutoSave.textContent = "✅ Fichier lié : Sauvegarde automatique active";
-										}
-								}
-						});
-				}
-				
-				const bleedingRadios = document.querySelectorAll('input[name="bleeding"]');
-        bleedingRadios.forEach(r => {
-            r.addEventListener('click', () => { // Click permet de déselectionner si besoin
-               this.saveBleeding();
+                if (screen.orientation && screen.orientation.lock) {
+                    try {
+                        await screen.orientation.lock('landscape');
+                    } catch (err) {
+                        console.log("Rotation forcée bloquée");
+                    }
+                }
+                
+                setTimeout(() => {
+                    const container = document.querySelector('.canvas-scroll-container');
+                    if(container) container.scrollLeft = container.scrollWidth;
+                }, 150);
             });
-        });
-		}
-		
-		saveBleeding() {
-        const val = document.querySelector('input[name="bleeding"]:checked')?.value;
-        // Si c'est 'spotting', on l'enregistre. Si c'est 'menses', on pourrait proposer nouveau cycle
-        // Pour l'instant on enregistre juste la donnée.
-        this.dm.saveEntry({
-            date: document.getElementById('global-date').value,
-            bleeding: val
-        });
-        this.refreshAll();
+        }
+
+        if (this.dom.btnCloseChart) {
+            this.dom.btnCloseChart.addEventListener('click', () => {
+                if (screen.orientation && screen.orientation.unlock) {
+                    screen.orientation.unlock();
+                }
+                this.dom.overlay.classList.add('hidden');
+            });
+        }
     }
 
-    saveMucus() {
-        const sensation = document.querySelector('input[name="sensation"]:checked')?.value;
-        const aspect = document.querySelector('input[name="aspect"]:checked')?.value;
-        this.dm.saveEntry({
-            date: this.dom.date.value,
-            mucusSensation: sensation,
-            mucusAspect: aspect
+    initInputs() {
+        this.dom.date.addEventListener('change', () => this.loadDataForCurrentDate());
+        
+        // Auto-exclusion mutuelle entre saignements et glaire
+        if (this.dom.inputs.bleeding) {
+            this.dom.inputs.bleeding.forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    if (e.target.value !== 'none') {
+                        // Décocher les radios de glaire
+                        this.dom.inputs.sensation.forEach(r => r.checked = false);
+                        this.dom.inputs.aspect.forEach(r => r.checked = false);
+                    }
+                });
+            });
+        }
+
+        if (this.dom.inputs.sensation || this.dom.inputs.aspect) {
+            [...(this.dom.inputs.sensation || []), ...(this.dom.inputs.aspect || [])].forEach(radio => {
+                radio.addEventListener('change', () => {
+                    // Décocher "bleeding" si on coche une glaire
+                    const noneRadio = document.querySelector('input[name="bleeding"][value="none"]');
+                    if (noneRadio) noneRadio.checked = true;
+                });
+            });
+        }
+
+        [...this.dom.inputs.perturbations, this.dom.manualExclude].forEach(i => {
+            if(i) i.addEventListener('change', () => this.saveMisc());
         });
-        this.refreshAll();
+        
+        const btnAutoSave = document.getElementById('btn-enable-autosave');
+        const msgAutoSave = document.getElementById('autosave-msg');
+
+        if (btnAutoSave) {
+            btnAutoSave.addEventListener('click', async () => {
+                const success = await this.dm.enableNativeAutoSave();
+                if (success) {
+                    btnAutoSave.style.display = 'none';
+                    if(msgAutoSave) {
+                        msgAutoSave.style.display = 'block';
+                        msgAutoSave.textContent = "✅ Fichier lié : Sauvegarde automatique active";
+                    }
+                }
+            });
+        }
     }
 
     saveMisc() {
@@ -307,71 +247,170 @@ export class UIManager {
         this.refreshAll();
     }
 
-		initCycleManager() {
-				// Gestionnaire "Nouveau Cycle" via Input Date caché
-				if (this.dom.btnAddCycle && this.dom.newCyclePicker) {
-						this.dom.btnAddCycle.addEventListener('click', () => {
-								// Ouvre le sélecteur natif
-								this.dom.newCyclePicker.showPicker(); 
-						});
+    // REFONTE : Gestion des cycles simplifiée
+    initCycleManager() {
+        // Changement de cycle actif
+        if (this.dom.cycleSelector) {
+            this.dom.cycleSelector.addEventListener('change', (e) => {
+                const newIndex = parseInt(e.target.value);
+                this.dm.setActiveCycleIndex(newIndex);
+                this.refreshAll();
+            });
+        }
 
-						this.dom.newCyclePicker.addEventListener('change', (e) => {
-								if(e.target.value) {
-										this.dm.startNewCycle(e.target.value);
-										this.refreshAll();
-										// Reset pour pouvoir resélectionner la même date si besoin
-										this.dom.newCyclePicker.value = ''; 
-								}
-						});
-				}
-
-				// Gestionnaire "Modifier Date Cycle" (Code existant amélioré)
-				if (this.dom.btnEditCycle && this.dom.datePickerHidden) {
-						this.dom.btnEditCycle.addEventListener('click', () => this.dom.datePickerHidden.showPicker());
-						this.dom.datePickerHidden.addEventListener('change', (e) => {
-								const cycle = this.dm.getCurrentCycle();
-								if(e.target.value) { 
-										cycle.startDate = e.target.value; 
-										this.dm.saveData(); 
-										this.refreshAll(); 
-								}
-						});
-				}
-				
-				if (this.dom.btnDeleteCycle) {
-            this.dom.btnDeleteCycle.addEventListener('click', () => {
-                if(this.dm.deleteCurrentCycle()) {
+        // Bouton nouveau cycle
+        if (this.dom.btnAddCycle) {
+            this.dom.btnAddCycle.addEventListener('click', () => {
+                const startDate = this.dom.newCyclePicker?.value || new Date().toISOString().split('T')[0];
+                if (confirm(`Démarrer un nouveau cycle le ${startDate} ?`)) {
+                    this.dm.startNewCycle(startDate);
                     this.refreshAll();
                 }
             });
         }
 
-				if (this.dom.cycleSelector) {
-						this.dom.cycleSelector.addEventListener('change', (e) => {
-								this.dm.setActiveCycleIndex(parseInt(e.target.value));
-								this.refreshAll();
-						});
-				}
-		}
+        // Édition de la date de début du cycle actif
+        if (this.dom.btnEditCycle && this.dom.datePickerHidden) {
+            this.dom.btnEditCycle.addEventListener('click', () => {
+                const cycle = this.dm.getCurrentCycle();
+                this.dom.datePickerHidden.value = cycle.startDate;
+                this.dom.datePickerHidden.style.display = 'block';
+                this.dom.datePickerHidden.focus();
+            });
+
+            this.dom.datePickerHidden.addEventListener('change', (e) => {
+                const newDate = e.target.value;
+                if (confirm(`Modifier la date de début à ${newDate} ?`)) {
+                    const activeIndex = this.dm.getActiveCycleIndex();
+                    this.dm.updateCycleStartDate(activeIndex, newDate);
+                    this.refreshAll();
+                }
+                e.target.style.display = 'none';
+            });
+        }
+
+        // Suppression du cycle actif
+        if (this.dom.btnDeleteCycle) {
+            this.dom.btnDeleteCycle.addEventListener('click', () => {
+                if (this.dm.deleteCurrentCycle()) {
+                    this.refreshAll();
+                }
+            });
+        }
+
+        // Gestion de la liste des cycles
+        const list = document.getElementById('cycles-list');
+        if (list) {
+            list.addEventListener('click', (e) => {
+                // Clic sur un cycle pour le sélectionner
+                const cycleRow = e.target.closest('.cycle-row');
+                if (cycleRow && !e.target.closest('.btn-delete-cycle')) {
+                    const index = parseInt(cycleRow.dataset.index);
+                    this.dm.setActiveCycleIndex(index);
+                    this.refreshAll();
+                }
+
+                // Suppression
+                if (e.target.closest('.btn-delete-cycle')) {
+                    const index = parseInt(e.target.closest('.btn-delete-cycle').dataset.index);
+                    if (this.dm.deleteCycle(index)) {
+                        this.refreshAll();
+                    }
+                }
+            });
+
+            // Édition du numéro de cycle
+            list.addEventListener('change', (e) => {
+                if (e.target.classList.contains('cycle-id-input')) {
+                    const index = parseInt(e.target.dataset.index);
+                    const newId = parseInt(e.target.value);
+                    if (newId && newId > 0) {
+                        this.dm.updateCycleId(index, newId);
+                        e.target.blur();
+                    }
+                }
+            });
+
+            // Édition de la date de début
+            list.addEventListener('change', (e) => {
+                if (e.target.classList.contains('cycle-date-input')) {
+                    const index = parseInt(e.target.dataset.index);
+                    const newDate = e.target.value;
+                    if (newDate) {
+                        this.dm.updateCycleStartDate(index, newDate);
+                        this.refreshAll();
+                    }
+                }
+            });
+        }
+    }
+    
+    // UI REFONTE : Liste des cycles plus claire
+    updateCyclesList() {
+        const list = document.getElementById('cycles-list');
+        if (!list) return;
+
+        const cycles = this.dm.getAllCycles();
+        const activeIndex = this.dm.getActiveCycleIndex();
+
+        list.innerHTML = cycles.map((c, i) => {
+            const startDate = new Date(c.startDate).toLocaleDateString('fr-FR');
+            const isCurrent = (i === activeIndex);
+            const entriesCount = c.entries.length;
+            
+            return `
+            <div class="cycle-row ${isCurrent ? 'active-cycle' : ''}" data-index="${i}" 
+                 style="background: var(--bg-card); padding: 20px; margin-bottom: 12px; border-radius: 12px; border: 2px solid ${isCurrent ? 'var(--primary)' : 'var(--border)'}; cursor: pointer;">
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <span style="font-size: 0.7rem; opacity: 0.7; text-transform: uppercase;">Cycle</span>
+                            <input type="number" class="cycle-id-input" value="${c.id}" data-index="${i}" 
+                                   style="width: 50px; text-align: center; font-size: 1.3rem; font-weight: 800; border: none; border-bottom: 1px dashed var(--border); background: transparent; color: var(--primary);">
+                        </div>
+                        ${isCurrent ? '<span style="background: var(--primary); color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Actif</span>' : ''}
+                    </div>
+                    
+                    <button class="btn-delete-cycle" data-index="${i}" 
+                            style="background: none; border: none; font-size: 1.3rem; color: var(--danger); cursor: pointer; padding: 8px;">
+                        🗑️
+                    </button>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1;">
+                        <div style="font-size: 0.8rem; opacity: 0.7; margin-bottom: 4px;">Date de début</div>
+                        <input type="date" class="cycle-date-input" value="${c.startDate}" data-index="${i}"
+                               style="font-size: 1rem; font-weight: 600; border: 1px solid var(--border); border-radius: 6px; padding: 6px; background: var(--bg-body); color: var(--text-main);">
+                    </div>
+                    <div style="text-align: right; margin-left: 15px;">
+                        <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary);">${entriesCount}</div>
+                        <div style="font-size: 0.75rem; opacity: 0.7;">entrées</div>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
 
     refreshAll() {
         this.updateCycleSelectorOptions();
         this.updateCycleHeaderLabel();
         this.updateGlobalUI();
         this.loadDataForCurrentDate();
+        this.updateCyclesList();
     }
 
-		updateCycleSelectorOptions() {
-				if(!this.dom.cycleSelector) return;
-				const cycles = this.dm.getAllCycles();
-				
-				// Affichage: "#ID - Date (YYYY-MM-DD)"
-				this.dom.cycleSelector.innerHTML = cycles.map((c, i) => 
-						`<option value="${i}" ${i === this.dm.getActiveCycleIndex() ? 'selected' : ''}>
-								#${c.id} - ${c.startDate}
-						</option>`
-				).join('');
-		}
+    updateCycleSelectorOptions() {
+        if(!this.dom.cycleSelector) return;
+        const cycles = this.dm.getAllCycles();
+        
+        this.dom.cycleSelector.innerHTML = cycles.map((c, i) => 
+            `<option value="${i}" ${i === this.dm.getActiveCycleIndex() ? 'selected' : ''}>
+                Cycle #${c.id} - ${c.startDate}
+            </option>`
+        ).join('');
+    }
 
     updateCycleHeaderLabel() {
         if(!this.dom.cycleInfo) return;
@@ -380,9 +419,11 @@ export class UIManager {
         this.dom.cycleInfo.textContent = `Débuté le ${start.toLocaleDateString('fr-FR', {day:'numeric', month:'short'})}`;
     }
 
-    // --- UTILS ---
+    // CORRECTION : Chargement sécurisé des données
     loadDataForCurrentDate() {
         const date = this.dom.date.value;
+        if (!date || date === 'Invalid Date') return;
+        
         const cycle = this.dm.getCurrentCycle();
         const entry = cycle.entries.find(e => e.date === date);
 
@@ -392,14 +433,23 @@ export class UIManager {
         if(this.dom.manualExclude) this.dom.manualExclude.checked = false;
 
         if (entry) {
-            if (entry.mucusSensation) {
-                const rad = document.querySelector(`input[name="sensation"][value="${entry.mucusSensation}"]`);
+            // Saignements
+            if (entry.bleeding && entry.bleeding !== 'none') {
+                const rad = document.querySelector(`input[name="bleeding"][value="${entry.bleeding}"]`);
                 if(rad) rad.checked = true;
+            } else {
+                // Glaire
+                if (entry.mucusSensation) {
+                    const rad = document.querySelector(`input[name="mucus-sensation"][value="${entry.mucusSensation}"]`);
+                    if(rad) rad.checked = true;
+                }
+                if (entry.mucusAspect) {
+                    const rad = document.querySelector(`input[name="mucus-aspect"][value="${entry.mucusAspect}"]`);
+                    if(rad) rad.checked = true;
+                }
             }
-            if (entry.mucusAspect) {
-                const rad = document.querySelector(`input[name="aspect"][value="${entry.mucusAspect}"]`);
-                if(rad) rad.checked = true;
-            }
+
+            // Perturbations
             if (entry.perturbations) {
                 Object.keys(entry.perturbations).forEach(id => {
                     const el = document.getElementById(id);
@@ -408,29 +458,73 @@ export class UIManager {
             }
             if(this.dom.manualExclude) this.dom.manualExclude.checked = !!entry.excludeTemp;
         }
+        
         this.updateGlobalUI();
     }
 
-		updateGlobalUI() {
-						const cycle = this.dm.getCurrentCycle();
-						const analysis = CycleComputer.analyzeCycle(cycle);
-						
-						if (this.paperChart) {
-								this.paperChart.render(cycle, analysis);
-						}
-						
-						this.updateHistoryList(cycle);
-				}
+    updateGlobalUI() {
+        const cycle = this.dm.getCurrentCycle();
+        const analysis = CycleComputer.analyzeCycle(cycle);
+        
+        if (this.paperChart) {
+            this.paperChart.render(cycle, analysis);
+        }
+        
+        this.updateHistoryList();
+    }
 
-    updateHistoryList(cycle) {
-        if(!this.dom.historyList) return;
-        const entries = [...cycle.entries].reverse();
-        this.dom.historyList.innerHTML = entries.map(e => `
-            <li class="history-item">
-                <strong>${e.date}</strong>: ${e.temp ? e.temp + '°' : '--'} 
-                | Glaire: ${CycleComputer.classifyMucus(e.mucusSensation, e.mucusAspect)}
-            </li>
-        `).join('');
+    // CORRECTION : Historique adapté au cycle sélectionné
+    updateHistoryList() {
+        const list = document.getElementById('history-list');
+        if (!list) return;
+        
+        const cycle = this.dm.getCurrentCycle();
+        const entries = [...cycle.entries].sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        if (entries.length === 0) {
+            list.innerHTML = '<li style="text-align: center; padding: 40px; opacity: 0.5;">Aucune donnée dans ce cycle</li>';
+            return;
+        }
+        
+        list.innerHTML = entries.map(e => {
+            let details = [];
+            if (e.temp) details.push(`🌡️ ${e.temp}°C`);
+            
+            const mucusCode = CycleComputer.classifyMucus(e.mucusSensation, e.mucusAspect);
+            if (mucusCode && mucusCode !== '--') details.push(`Glaire: ${mucusCode}`);
+            
+            if (e.bleeding && e.bleeding !== 'none') {
+                const bleedMap = {
+                    'spotting': '🩸 Spotting', 
+                    'medium': '🩸🩸 Moyen', 
+                    'heavy': '🩸🩸🩸 Abondant'
+                };
+                details.push(bleedMap[e.bleeding] || e.bleeding);
+            }
+
+            const dateFr = new Date(e.date).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short', year: 'numeric'});
+
+            return `
+            <li class="history-item" style="display:flex; justify-content:space-between; align-items:center; padding:16px; border-bottom:1px solid var(--border); background: var(--bg-card); margin-bottom: 8px; border-radius: 8px;">
+                <div>
+                    <div style="font-weight: 700; color: var(--primary); margin-bottom: 4px;">${dateFr}</div>
+                    <div style="font-size: 0.9rem; color: #666;">${details.join(' • ')}</div>
+                </div>
+                <button class="btn-delete-entry" data-date="${e.date}" style="border:none; background:none; color:var(--danger); font-weight:bold; font-size:1.5rem; padding:0 12px; cursor: pointer;">
+                    ×
+                </button>
+            </li>`;
+        }).join('');
+
+        list.querySelectorAll('.btn-delete-entry').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const dateToDelete = e.target.dataset.date;
+                if(confirm("Supprimer cette entrée ?")) {
+                    this.dm.deleteEntry(dateToDelete);
+                    this.refreshAll();
+                }
+            });
+        });
     }
 
     initTabs() {
