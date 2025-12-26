@@ -29,7 +29,14 @@
 
     <header class="app-header">
         <div class="brand">SensiTrack</div>
-        <div id="save-status" class="status-dot"></div>
+        
+        <!-- NOUVEAU : Sélecteur de cycle avec flèches -->
+        <div class="cycle-nav-compact">
+            <button id="btn-prev-cycle" class="cycle-arrow" title="Cycle précédent">‹</button>
+            <div id="cycle-display-compact" class="cycle-label">Cycle #1</div>
+            <button id="btn-next-cycle" class="cycle-arrow" title="Cycle suivant">›</button>
+        </div>
+        
         <button id="theme-toggle" class="theme-switch">
             <span class="icon-sun">☀️</span>
             <span class="icon-moon">🌙</span>
@@ -37,32 +44,9 @@
     </header>
 
     <section class="control-zone">
-        <div class="row">
-            <div class="input-group">
-                <input type="date" id="global-date">
-                <input type="time" id="global-time">
-            </div>
-            <div class="input-group">
-                <select id="cycle-selector-ui"></select>
-                <div class="cycle-actions">
-                    <input type="date" id="cycle-start-edit-picker" style="display:none">
-                    <input type="date" id="new-cycle-picker" style="display:none">
-                    
-                    <button id="btn-edit-cycle-date" class="btn-mini" title="Modifier date cycle">📅</button>
-                    <button id="btn-delete-cycle" class="btn-mini" title="Supprimer cycle" style="color: var(--danger); border-color: var(--danger);">🗑️</button>
-                    <button id="btn-add-cycle-main" class="btn-mini btn-primary" title="Nouveau cycle">➕</button>
-                </div>
-            </div>
-        </div>
-        <div id="cycle-info-display" class="cycle-badge">Chargement...</div>
-        
-        <div style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px;">
-            <button id="btn-enable-autosave" class="btn-mini" style="width:100%; border-color: var(--primary); color: var(--primary);">
-                💾 Activer sauvegarde auto (Fichier)
-            </button>
-            <div id="autosave-msg" style="font-size: 0.75rem; color: green; margin-top: 5px; display:none;">
-                ✅ Sauvegarde auto active
-            </div>
+        <div class="input-group-centered">
+            <input type="date" id="global-date">
+            <input type="time" id="global-time">
         </div>
     </section>
 
@@ -93,31 +77,28 @@
         </section>
 
         <section id="mucus-panel" class="panel">
-            <div style="background: rgba(255, 193, 7, 0.1); border-left: 4px solid #ffc107; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem;">
-                ⚠️ <strong>Important :</strong> Enregistrez soit des saignements, soit une observation de glaire (pas les deux en même temps)
-            </div>
-
-            <h3 style="font-size: 0.9rem; font-weight: 700; text-transform: uppercase; opacity: 0.7; margin: 20px 0 10px;">Saignements</h3>
-            <div class="mucus-grid">
+            <h3 class="section-title">Saignements</h3>
+            <div class="mucus-grid-compact">
                 <label class="radio-card"><input type="radio" name="bleeding" value="none" checked> ∅ Aucun</label>
-                <label class="radio-card"><input type="radio" name="bleeding" value="spotting"> 🩸 Spotting</label>
+                <label class="radio-card"><input type="radio" name="bleeding" value="spotting"> 💉 Spotting</label>
+                <label class="radio-card"><input type="radio" name="bleeding" value="light"> 🩸 Léger</label>
                 <label class="radio-card"><input type="radio" name="bleeding" value="medium"> 🩸🩸 Moyen</label>
-                <label class="radio-card"><input type="radio" name="bleeding" value="heavy"> 🩸🩸🩸 Abondant</label>
+                <label class="radio-card"><input type="radio" name="bleeding" value="heavy"> 🩸🩸🩸 Abondant</label> 
             </div>
 
-            <hr style="border: 0; border-top: 1px solid var(--border); margin: 25px 0;">
+            <hr class="section-divider">
             
-            <h3 style="font-size: 0.9rem; font-weight: 700; text-transform: uppercase; opacity: 0.7; margin: 20px 0 10px;">Sensation de glaire</h3>
-            <div class="mucus-grid">
+            <h3 class="section-title" id="mucus-sensation-title">Sensation de glaire</h3>
+            <div class="mucus-grid-compact" id="mucus-sensation-grid">
                 <label class="radio-card"><input type="radio" name="mucus-sensation" value="rien"> ∅ Rien</label>
-                <label class="radio-card"><input type="radio" name="mucus-sensation" value="seche"> 🏜️ Sèche</label>
+                <label class="radio-card"><input type="radio" name="mucus-sensation" value="seche"> 🌵 Sèche</label>
                 <label class="radio-card"><input type="radio" name="mucus-sensation" value="humide"> 💧 Humide</label>
-                <label class="radio-card"><input type="radio" name="mucus-sensation" value="mouillee"> 🌊 Mouillée</label>
+                <label class="radio-card"><input type="radio" name="mucus-sensation" value="mouillee"> 💦 Mouillée</label>
                 <label class="radio-card"><input type="radio" name="mucus-sensation" value="glissante"> ⛸️ Glissante</label>
             </div>
 
-            <h3 style="font-size: 0.9rem; font-weight: 700; text-transform: uppercase; opacity: 0.7; margin: 20px 0 10px;">Aspect de la glaire</h3>
-            <div class="mucus-grid">
+            <h3 class="section-title" id="mucus-aspect-title">Aspect de la glaire</h3>
+            <div class="mucus-grid-compact" id="mucus-aspect-grid">
                 <label class="radio-card"><input type="radio" name="mucus-aspect" value="rien"> ∅ Rien</label>
                 <label class="radio-card"><input type="radio" name="mucus-aspect" value="cremeux"> 🥛 Crémeux</label>
                 <label class="radio-card"><input type="radio" name="mucus-aspect" value="jaunatre"> 🟡 Jaunâtre</label>
@@ -125,14 +106,14 @@
                 <label class="radio-card"><input type="radio" name="mucus-aspect" value="filant"> 🧵 Filant</label>
             </div>
 
-            <button id="btn-validate-mucus" class="btn-main-action" style="margin-top:20px;">✓ Valider</button>
+            <button id="btn-validate-mucus" class="btn-main-action">✓ Valider</button>
         </section>
 
         <section id="perturb-panel" class="panel">
             <label class="check-card special">
                 <input type="checkbox" id="manual-exclude-temp"> 🚫 Exclure cette mesure
             </label>
-            <div class="perturbations-list">
+            <div class="perturbations-grid">
                 <label class="check-card"><input type="checkbox" id="p-sleep"> 💤 Sommeil</label>
                 <label class="check-card"><input type="checkbox" id="p-alcohol"> 🍷 Alcool</label>
                 <label class="check-card"><input type="checkbox" id="p-illness"> 🤒 Maladie</label>
@@ -146,30 +127,54 @@
         </section>
         
         <section id="cycles-panel" class="panel">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2 style="font-size: 1.3rem; font-weight: 700;">Mes cycles</h2>
+            <div class="cycles-header">
+                <h2>Gestion des cycles</h2>
+                <button id="btn-add-cycle-main" class="btn-primary-small">➕ Nouveau cycle</button>
             </div>
-            <div id="cycles-list"></div>
+            
+            <div class="new-cycle-form" id="new-cycle-form" style="display:none;">
+                <input type="date" id="new-cycle-picker">
+                <button id="btn-confirm-new-cycle" class="btn-primary-small">Créer</button>
+                <button id="btn-cancel-new-cycle" class="btn-secondary-small">Annuler</button>
+            </div>
+            
+            <div class="cycles-table-container">
+                <table class="cycles-table">
+                    <thead>
+                        <tr>
+                            <th>N°</th>
+                            <th>Date début</th>
+                            <th>Durée</th>
+                            <th>Entrées</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cycles-table-body">
+                    </tbody>
+                </table>
+            </div>
         </section>
-
-        <div class="chart-action-zone">
-            <button id="btn-open-chart" class="btn-chart-access">
-                <span class="chart-icon">📈</span>
-                <span class="chart-text">Voir mon graphique complet</span>
-                <span class="chart-sub">Mode paysage</span>
-            </button>
-        </div>
-
-        <div id="full-screen-chart-overlay" class="chart-overlay hidden">
-            <div class="overlay-header">
-                <button id="btn-close-chart" class="btn-close">🏠 Retour Accueil</button>
-                <div class="rotation-hint">Pivotez votre écran ↻</div>
-            </div>
-            <div class="canvas-scroll-container">
-                <canvas id="paperChartCanvas"></canvas>
-            </div>
-        </div>
     </main>
+
+    <!-- FAB : Bouton flottant pour le graphique -->
+    <button id="btn-open-chart" class="fab-chart" title="Voir le graphique">
+        📈
+    </button>
+
+    <!-- Overlay du graphique -->
+    <div id="full-screen-chart-overlay" class="chart-overlay hidden">
+        <div class="overlay-header">
+            <button id="btn-close-chart" class="btn-close">🏠 Retour</button>
+            <div class="zoom-controls">
+                <button id="btn-zoom-out" class="zoom-btn">➖</button>
+                <button id="btn-zoom-reset" class="zoom-btn">↻</button>
+                <button id="btn-zoom-in" class="zoom-btn">➕</button>
+            </div>
+        </div>
+        <div class="canvas-scroll-container" id="canvas-scroll-container">
+            <canvas id="paperChartCanvas"></canvas>
+        </div>
+    </div>
 
     <script type="module" src="js/app.js"></script>
 </body>

@@ -8,6 +8,7 @@ export class UIManager {
         this.tempInt = 36;
         this.tempDec1 = 3;
         this.tempDec2 = 0;
+        this.chartZoom = 1.0;
     }
 
     init() {
@@ -17,6 +18,7 @@ export class UIManager {
         this.initWheels();
         this.initTabs();
         this.initInputs();
+        this.initCycleNavigation();
         this.initCycleManager();
         this.initTheme();
         this.initChartOverlay();
@@ -39,19 +41,24 @@ export class UIManager {
             wheelDec1: document.getElementById('wheel-dec1'),
             wheelDec2: document.getElementById('wheel-dec2'),
             tempDisplay: document.getElementById('temp-val-display'),
-            cycleSelector: document.getElementById('cycle-selector-ui'),
-            cycleInfo: document.getElementById('cycle-info-display'),
-            btnDeleteCycle: document.getElementById('btn-delete-cycle'),
-            btnAddCycle: document.getElementById('btn-add-cycle-main'),
-            btnEditCycle: document.getElementById('btn-edit-cycle-date'),
-            datePickerHidden: document.getElementById('cycle-start-edit-picker'),
+            
+            // Nouveau sélecteur de cycle
+            cycleDisplayCompact: document.getElementById('cycle-display-compact'),
+            btnPrevCycle: document.getElementById('btn-prev-cycle'),
+            btnNextCycle: document.getElementById('btn-next-cycle'),
+            
             manualExclude: document.getElementById('manual-exclude-temp'),
             historyList: document.getElementById('history-list'),
-            newCyclePicker: document.getElementById('new-cycle-picker'),
             btnValidateMucus: document.getElementById('btn-validate-mucus'),
             overlay: document.getElementById('full-screen-chart-overlay'),
             btnOpenChart: document.getElementById('btn-open-chart'),
             btnCloseChart: document.getElementById('btn-close-chart'),
+            
+            // Contrôles de zoom
+            btnZoomIn: document.getElementById('btn-zoom-in'),
+            btnZoomOut: document.getElementById('btn-zoom-out'),
+            btnZoomReset: document.getElementById('btn-zoom-reset'),
+            
             inputs: {
                 sensation: document.querySelectorAll('input[name="mucus-sensation"]'),
                 aspect: document.querySelectorAll('input[name="mucus-aspect"]'),
@@ -67,7 +74,6 @@ export class UIManager {
         };
     }
     
-    // CORRECTION : Logique exclusive saignements OU glaire
     validateMucus() {
         const bleeding = document.querySelector('input[name="bleeding"]:checked')?.value || 'none';
         const sensation = document.querySelector('input[name="mucus-sensation"]:checked')?.value;
@@ -77,15 +83,11 @@ export class UIManager {
             date: this.dom.date.value
         };
 
-        // Logique exclusive : soit saignements, soit glaire
         if (bleeding && bleeding !== 'none') {
-            // Mode saignement : on sauvegarde uniquement le bleeding
             entryData.bleeding = bleeding;
-            // On efface les données de glaire s'il y en avait
             entryData.mucusSensation = null;
             entryData.mucusAspect = null;
         } else {
-            // Mode glaire : on sauvegarde sensation et aspect
             if (sensation) entryData.mucusSensation = sensation;
             if (aspect) entryData.mucusAspect = aspect;
             entryData.bleeding = 'none';
@@ -155,11 +157,55 @@ export class UIManager {
         }
     }
     
+    // NOUVEAU : Navigation par flèches entre cycles
+    initCycleNavigation() {
+        if (this.dom.btnPrevCycle) {
+            this.dom.btnPrevCycle.addEventListener('click', () => {
+                const current = this.dm.getActiveCycleIndex();
+                if (current > 0) {
+                    this.dm.setActiveCycleIndex(current - 1);
+                    this.refreshAll();
+                }
+            });
+        }
+        
+        if (this.dom.btnNextCycle) {
+            this.dom.btnNextCycle.addEventListener('click', () => {
+                const current = this.dm.getActiveCycleIndex();
+                const cycles = this.dm.getAllCycles();
+                if (current < cycles.length - 1) {
+                    this.dm.setActiveCycleIndex(current + 1);
+                    this.refreshAll();
+                }
+            });
+        }
+    }
+    
+    updateCycleNavDisplay() {
+        const cycles = this.dm.getAllCycles();
+        const activeIndex = this.dm.getActiveCycleIndex();
+        const cycle = cycles[activeIndex];
+        
+        if (this.dom.cycleDisplayCompact) {
+            const status = activeIndex === cycles.length - 1 ? ' (En cours)' : '';
+            this.dom.cycleDisplayCompact.textContent = `Cycle #${cycle.id}${status}`;
+        }
+        
+        // Désactiver les boutons si on est aux extrémités
+        if (this.dom.btnPrevCycle) {
+            this.dom.btnPrevCycle.disabled = activeIndex === 0;
+        }
+        if (this.dom.btnNextCycle) {
+            this.dom.btnNextCycle.disabled = activeIndex === cycles.length - 1;
+        }
+    }
+    
     initChartOverlay() {
         if (this.dom.btnOpenChart) {
             this.dom.btnOpenChart.addEventListener('click', async () => {
                 this.dom.overlay.classList.remove('hidden');
-                this.updateGlobalUI(); 
+                this.chartZoom = 1.0;
+                this.updateGlobalUI();
 
                 if (screen.orientation && screen.orientation.lock) {
                     try {
@@ -170,7 +216,7 @@ export class UIManager {
                 }
                 
                 setTimeout(() => {
-                    const container = document.querySelector('.canvas-scroll-container');
+                    const container = document.getElementById('canvas-scroll-container');
                     if(container) container.scrollLeft = container.scrollWidth;
                 }, 150);
             });
@@ -184,15 +230,39 @@ export class UIManager {
                 this.dom.overlay.classList.add('hidden');
             });
         }
+        
+        // NOUVEAU : Contrôles de zoom
+        if (this.dom.btnZoomIn) {
+            this.dom.btnZoomIn.addEventListener('click', () => {
+                this.chartZoom = Math.min(3.0, this.chartZoom + 0.2);
+                this.updateGlobalUI();
+            });
+        }
+        
+        if (this.dom.btnZoomOut) {
+            this.dom.btnZoomOut.addEventListener('click', () => {
+                this.chartZoom = Math.max(0.5, this.chartZoom - 0.2);
+                this.updateGlobalUI();
+            });
+        }
+        
+        if (this.dom.btnZoomReset) {
+            this.dom.btnZoomReset.addEventListener('click', () => {
+                this.chartZoom = 1.0;
+                this.updateGlobalUI();
+            });
+        }
     }
 
     initInputs() {
         this.dom.date.addEventListener('change', () => this.loadDataForCurrentDate());
         
-        // Auto-exclusion mutuelle entre saignements et glaire
+        // NOUVEAU : Exclusion mutuelle avec UI désactivée
         if (this.dom.inputs.bleeding) {
             this.dom.inputs.bleeding.forEach(radio => {
                 radio.addEventListener('change', (e) => {
+                    this.updateMucusUIState(e.target.value !== 'none');
+                    
                     if (e.target.value !== 'none') {
                         // Décocher les radios de glaire
                         this.dom.inputs.sensation.forEach(r => r.checked = false);
@@ -207,7 +277,10 @@ export class UIManager {
                 radio.addEventListener('change', () => {
                     // Décocher "bleeding" si on coche une glaire
                     const noneRadio = document.querySelector('input[name="bleeding"][value="none"]');
-                    if (noneRadio) noneRadio.checked = true;
+                    if (noneRadio) {
+                        noneRadio.checked = true;
+                        this.updateMucusUIState(false);
+                    }
                 });
             });
         }
@@ -215,21 +288,32 @@ export class UIManager {
         [...this.dom.inputs.perturbations, this.dom.manualExclude].forEach(i => {
             if(i) i.addEventListener('change', () => this.saveMisc());
         });
+    }
+    
+    // NOUVEAU : Griser/dé-griser les sections glaire
+    updateMucusUIState(isBleedingSelected) {
+        const sensationGrid = document.getElementById('mucus-sensation-grid');
+        const aspectGrid = document.getElementById('mucus-aspect-grid');
+        const sensationTitle = document.getElementById('mucus-sensation-title');
+        const aspectTitle = document.getElementById('mucus-aspect-title');
         
-        const btnAutoSave = document.getElementById('btn-enable-autosave');
-        const msgAutoSave = document.getElementById('autosave-msg');
-
-        if (btnAutoSave) {
-            btnAutoSave.addEventListener('click', async () => {
-                const success = await this.dm.enableNativeAutoSave();
-                if (success) {
-                    btnAutoSave.style.display = 'none';
-                    if(msgAutoSave) {
-                        msgAutoSave.style.display = 'block';
-                        msgAutoSave.textContent = "✅ Fichier lié : Sauvegarde automatique active";
-                    }
-                }
-            });
+        if (isBleedingSelected) {
+            sensationGrid?.classList.add('disabled');
+            aspectGrid?.classList.add('disabled');
+            sensationTitle?.classList.add('disabled');
+            aspectTitle?.classList.add('disabled');
+            
+            // Désactiver les radio cards
+            sensationGrid?.querySelectorAll('.radio-card').forEach(card => card.classList.add('disabled'));
+            aspectGrid?.querySelectorAll('.radio-card').forEach(card => card.classList.add('disabled'));
+        } else {
+            sensationGrid?.classList.remove('disabled');
+            aspectGrid?.classList.remove('disabled');
+            sensationTitle?.classList.remove('disabled');
+            aspectTitle?.classList.remove('disabled');
+            
+            sensationGrid?.querySelectorAll('.radio-card').forEach(card => card.classList.remove('disabled'));
+            aspectGrid?.querySelectorAll('.radio-card').forEach(card => card.classList.remove('disabled'));
         }
     }
 
@@ -247,92 +331,73 @@ export class UIManager {
         this.refreshAll();
     }
 
-    // REFONTE : Gestion des cycles simplifiée
+    // REFONTE : Gestion des cycles via tableau
     initCycleManager() {
-        // Changement de cycle actif
-        if (this.dom.cycleSelector) {
-            this.dom.cycleSelector.addEventListener('change', (e) => {
-                const newIndex = parseInt(e.target.value);
-                this.dm.setActiveCycleIndex(newIndex);
-                this.refreshAll();
+        const btnAddCycle = document.getElementById('btn-add-cycle-main');
+        const btnConfirmNew = document.getElementById('btn-confirm-new-cycle');
+        const btnCancelNew = document.getElementById('btn-cancel-new-cycle');
+        const newCycleForm = document.getElementById('new-cycle-form');
+        const newCyclePicker = document.getElementById('new-cycle-picker');
+        
+        if (btnAddCycle) {
+            btnAddCycle.addEventListener('click', () => {
+                newCycleForm.style.display = 'flex';
+                newCyclePicker.value = new Date().toISOString().split('T')[0];
+                newCyclePicker.focus();
             });
         }
-
-        // Bouton nouveau cycle
-        if (this.dom.btnAddCycle) {
-            this.dom.btnAddCycle.addEventListener('click', () => {
-                const startDate = this.dom.newCyclePicker?.value || new Date().toISOString().split('T')[0];
-                if (confirm(`Démarrer un nouveau cycle le ${startDate} ?`)) {
+        
+        if (btnConfirmNew) {
+            btnConfirmNew.addEventListener('click', () => {
+                const startDate = newCyclePicker.value;
+                if (startDate) {
                     this.dm.startNewCycle(startDate);
+                    newCycleForm.style.display = 'none';
                     this.refreshAll();
                 }
             });
         }
-
-        // Édition de la date de début du cycle actif
-        if (this.dom.btnEditCycle && this.dom.datePickerHidden) {
-            this.dom.btnEditCycle.addEventListener('click', () => {
-                const cycle = this.dm.getCurrentCycle();
-                this.dom.datePickerHidden.value = cycle.startDate;
-                this.dom.datePickerHidden.style.display = 'block';
-                this.dom.datePickerHidden.focus();
-            });
-
-            this.dom.datePickerHidden.addEventListener('change', (e) => {
-                const newDate = e.target.value;
-                if (confirm(`Modifier la date de début à ${newDate} ?`)) {
-                    const activeIndex = this.dm.getActiveCycleIndex();
-                    this.dm.updateCycleStartDate(activeIndex, newDate);
-                    this.refreshAll();
-                }
-                e.target.style.display = 'none';
+        
+        if (btnCancelNew) {
+            btnCancelNew.addEventListener('click', () => {
+                newCycleForm.style.display = 'none';
             });
         }
-
-        // Suppression du cycle actif
-        if (this.dom.btnDeleteCycle) {
-            this.dom.btnDeleteCycle.addEventListener('click', () => {
-                if (this.dm.deleteCurrentCycle()) {
-                    this.refreshAll();
-                }
-            });
-        }
-
-        // Gestion de la liste des cycles
-        const list = document.getElementById('cycles-list');
-        if (list) {
-            list.addEventListener('click', (e) => {
-                // Clic sur un cycle pour le sélectionner
-                const cycleRow = e.target.closest('.cycle-row');
-                if (cycleRow && !e.target.closest('.btn-delete-cycle')) {
-                    const index = parseInt(cycleRow.dataset.index);
-                    this.dm.setActiveCycleIndex(index);
-                    this.refreshAll();
-                }
-
+        
+        // Gestion du tableau
+        const tbody = document.getElementById('cycles-table-body');
+        if (tbody) {
+            tbody.addEventListener('click', (e) => {
+                const row = e.target.closest('tr');
+                if (!row) return;
+                
+                const index = parseInt(row.dataset.index);
+                
                 // Suppression
                 if (e.target.closest('.btn-delete-cycle')) {
-                    const index = parseInt(e.target.closest('.btn-delete-cycle').dataset.index);
                     if (this.dm.deleteCycle(index)) {
                         this.refreshAll();
                     }
+                    return;
+                }
+                
+                // Sélection du cycle (si on clique ailleurs que sur les actions)
+                if (!e.target.closest('.cycle-actions-cell')) {
+                    this.dm.setActiveCycleIndex(index);
+                    this.refreshAll();
                 }
             });
-
-            // Édition du numéro de cycle
-            list.addEventListener('change', (e) => {
+            
+            // Édition des champs
+            tbody.addEventListener('change', (e) => {
                 if (e.target.classList.contains('cycle-id-input')) {
                     const index = parseInt(e.target.dataset.index);
                     const newId = parseInt(e.target.value);
                     if (newId && newId > 0) {
                         this.dm.updateCycleId(index, newId);
-                        e.target.blur();
                     }
                 }
-            });
-
-            // Édition de la date de début
-            list.addEventListener('change', (e) => {
+                
                 if (e.target.classList.contains('cycle-date-input')) {
                     const index = parseInt(e.target.dataset.index);
                     const newDate = e.target.value;
@@ -345,81 +410,54 @@ export class UIManager {
         }
     }
     
-    // UI REFONTE : Liste des cycles plus claire
-    updateCyclesList() {
-        const list = document.getElementById('cycles-list');
-        if (!list) return;
-
+    updateCyclesTable() {
+        const tbody = document.getElementById('cycles-table-body');
+        if (!tbody) return;
+        
         const cycles = this.dm.getAllCycles();
         const activeIndex = this.dm.getActiveCycleIndex();
-
-        list.innerHTML = cycles.map((c, i) => {
-            const startDate = new Date(c.startDate).toLocaleDateString('fr-FR');
-            const isCurrent = (i === activeIndex);
+        
+        tbody.innerHTML = cycles.map((c, i) => {
+            const startDate = new Date(c.startDate);
             const entriesCount = c.entries.length;
             
+            // Calcul de la durée
+            let duration = '—';
+            if (c.entries.length > 0) {
+                const sortedEntries = [...c.entries].sort((a, b) => new Date(a.date) - new Date(b.date));
+                const firstDate = new Date(sortedEntries[0].date);
+                const lastDate = new Date(sortedEntries[sortedEntries.length - 1].date);
+                const days = Math.floor((lastDate - firstDate) / (1000 * 60 * 60 * 24)) + 1;
+                duration = `${days}j`;
+            }
+            
+            const isCurrent = i === activeIndex;
+            
             return `
-            <div class="cycle-row ${isCurrent ? 'active-cycle' : ''}" data-index="${i}" 
-                 style="background: var(--bg-card); padding: 20px; margin-bottom: 12px; border-radius: 12px; border: 2px solid ${isCurrent ? 'var(--primary)' : 'var(--border)'}; cursor: pointer;">
-                
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <span style="font-size: 0.7rem; opacity: 0.7; text-transform: uppercase;">Cycle</span>
-                            <input type="number" class="cycle-id-input" value="${c.id}" data-index="${i}" 
-                                   style="width: 50px; text-align: center; font-size: 1.3rem; font-weight: 800; border: none; border-bottom: 1px dashed var(--border); background: transparent; color: var(--primary);">
-                        </div>
-                        ${isCurrent ? '<span style="background: var(--primary); color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Actif</span>' : ''}
-                    </div>
-                    
-                    <button class="btn-delete-cycle" data-index="${i}" 
-                            style="background: none; border: none; font-size: 1.3rem; color: var(--danger); cursor: pointer; padding: 8px;">
-                        🗑️
-                    </button>
-                </div>
-                
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div style="flex: 1;">
-                        <div style="font-size: 0.8rem; opacity: 0.7; margin-bottom: 4px;">Date de début</div>
-                        <input type="date" class="cycle-date-input" value="${c.startDate}" data-index="${i}"
-                               style="font-size: 1rem; font-weight: 600; border: 1px solid var(--border); border-radius: 6px; padding: 6px; background: var(--bg-body); color: var(--text-main);">
-                    </div>
-                    <div style="text-align: right; margin-left: 15px;">
-                        <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary);">${entriesCount}</div>
-                        <div style="font-size: 0.75rem; opacity: 0.7;">entrées</div>
-                    </div>
-                </div>
-            </div>`;
+                <tr class="${isCurrent ? 'active-cycle' : ''}" data-index="${i}">
+                    <td>
+                        <input type="number" class="cycle-id-input" value="${c.id}" data-index="${i}" min="1">
+                    </td>
+                    <td>
+                        <input type="date" class="cycle-date-input" value="${c.startDate}" data-index="${i}">
+                    </td>
+                    <td>${duration}</td>
+                    <td>${entriesCount}</td>
+                    <td class="cycle-actions-cell">
+                        <button class="btn-icon-small danger btn-delete-cycle" data-index="${i}" title="Supprimer">🗑️</button>
+                    </td>
+                </tr>
+            `;
         }).join('');
     }
 
     refreshAll() {
-        this.updateCycleSelectorOptions();
-        this.updateCycleHeaderLabel();
+        this.updateCycleNavDisplay();
         this.updateGlobalUI();
         this.loadDataForCurrentDate();
-        this.updateCyclesList();
+        this.updateCyclesTable();
     }
 
-    updateCycleSelectorOptions() {
-        if(!this.dom.cycleSelector) return;
-        const cycles = this.dm.getAllCycles();
-        
-        this.dom.cycleSelector.innerHTML = cycles.map((c, i) => 
-            `<option value="${i}" ${i === this.dm.getActiveCycleIndex() ? 'selected' : ''}>
-                Cycle #${c.id} - ${c.startDate}
-            </option>`
-        ).join('');
-    }
-
-    updateCycleHeaderLabel() {
-        if(!this.dom.cycleInfo) return;
-        const cycle = this.dm.getCurrentCycle();
-        const start = new Date(cycle.startDate);
-        this.dom.cycleInfo.textContent = `Débuté le ${start.toLocaleDateString('fr-FR', {day:'numeric', month:'short'})}`;
-    }
-
-    // CORRECTION : Chargement sécurisé des données
     loadDataForCurrentDate() {
         const date = this.dom.date.value;
         if (!date || date === 'Invalid Date') return;
@@ -437,7 +475,9 @@ export class UIManager {
             if (entry.bleeding && entry.bleeding !== 'none') {
                 const rad = document.querySelector(`input[name="bleeding"][value="${entry.bleeding}"]`);
                 if(rad) rad.checked = true;
+                this.updateMucusUIState(true);
             } else {
+                this.updateMucusUIState(false);
                 // Glaire
                 if (entry.mucusSensation) {
                     const rad = document.querySelector(`input[name="mucus-sensation"][value="${entry.mucusSensation}"]`);
@@ -457,6 +497,8 @@ export class UIManager {
                 });
             }
             if(this.dom.manualExclude) this.dom.manualExclude.checked = !!entry.excludeTemp;
+        } else {
+            this.updateMucusUIState(false);
         }
         
         this.updateGlobalUI();
@@ -467,13 +509,12 @@ export class UIManager {
         const analysis = CycleComputer.analyzeCycle(cycle);
         
         if (this.paperChart) {
-            this.paperChart.render(cycle, analysis);
+            this.paperChart.render(cycle, analysis, this.chartZoom);
         }
         
         this.updateHistoryList();
     }
 
-    // CORRECTION : Historique adapté au cycle sélectionné
     updateHistoryList() {
         const list = document.getElementById('history-list');
         if (!list) return;
@@ -495,7 +536,8 @@ export class UIManager {
             
             if (e.bleeding && e.bleeding !== 'none') {
                 const bleedMap = {
-                    'spotting': '🩸 Spotting', 
+                    'spotting': '💉 Spotting', 
+                    'light': '🩸 Léger', 
                     'medium': '🩸🩸 Moyen', 
                     'heavy': '🩸🩸🩸 Abondant'
                 };
@@ -505,14 +547,12 @@ export class UIManager {
             const dateFr = new Date(e.date).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short', year: 'numeric'});
 
             return `
-            <li class="history-item" style="display:flex; justify-content:space-between; align-items:center; padding:16px; border-bottom:1px solid var(--border); background: var(--bg-card); margin-bottom: 8px; border-radius: 8px;">
+            <li class="history-item">
                 <div>
                     <div style="font-weight: 700; color: var(--primary); margin-bottom: 4px;">${dateFr}</div>
                     <div style="font-size: 0.9rem; color: #666;">${details.join(' • ')}</div>
                 </div>
-                <button class="btn-delete-entry" data-date="${e.date}" style="border:none; background:none; color:var(--danger); font-weight:bold; font-size:1.5rem; padding:0 12px; cursor: pointer;">
-                    ×
-                </button>
+                <button class="btn-delete-entry" data-date="${e.date}">×</button>
             </li>`;
         }).join('');
 
@@ -545,6 +585,11 @@ export class UIManager {
             const current = document.documentElement.getAttribute('data-theme');
             const next = current === 'dark' ? 'light' : 'dark';
             document.documentElement.setAttribute('data-theme', next);
+            
+            // Rafraîchir le graphique pour mettre à jour les couleurs
+            if (this.paperChart) {
+                this.updateGlobalUI();
+            }
         });
     }
 }

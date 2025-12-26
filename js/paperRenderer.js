@@ -5,10 +5,10 @@ export class PaperRenderer {
 
         this.config = {
             dayWidth: 30,
-            headerHeight: 80,
-            footerHeight: 60,
+            headerHeight: 40,  // RÉDUIT : moins d'espace au-dessus
+            footerHeight: 100, // AUGMENTÉ : plus d'espace pour dates/saignements
             tempMin: 36.0,
-            tempMax: 37.0, // CORRECTION : 37°C max au lieu de 37.5
+            tempMax: 37.0,
             gridHeight: 300,
             paddingLeft: 40,
             colors: {
@@ -23,7 +23,6 @@ export class PaperRenderer {
             }
         };
         
-        // Détection du mode sombre
         this.updateThemeColors();
     }
     
@@ -31,15 +30,13 @@ export class PaperRenderer {
         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
         
         if (isDark) {
-            // Mode sombre : arrière-plan plus clair pour meilleur contraste
-            this.config.colors.background = '#2a2a2a'; // Gris foncé mais lisible
+            this.config.colors.background = '#2a2a2a';
             this.config.colors.grid = '#4a4a4a';
             this.config.colors.gridStrong = '#666666';
             this.config.colors.text = '#e0e0e0';
             this.config.colors.tempLine = '#64b5f6';
             this.config.colors.tempDot = '#ffffff';
         } else {
-            // Mode clair
             this.config.colors.background = '#ffffff';
             this.config.colors.grid = '#e0e0e0';
             this.config.colors.gridStrong = '#9e9e9e';
@@ -49,46 +46,65 @@ export class PaperRenderer {
         }
     }
 
-    render(cycle, analysis) {
+    render(cycle, analysis, zoom = 1.0) {
         if (!cycle || !cycle.entries) return;
         
-        // Mise à jour des couleurs selon le thème actuel
         this.updateThemeColors();
         
         const entries = [...cycle.entries].sort((a, b) => new Date(a.date) - new Date(b.date));
 
-        // Calculs de dimensions
+        // Calculs de dimensions avec ZOOM
         const daysCount = Math.max(40, entries.length + 2);
-        const baseWidth = this.config.paddingLeft + (daysCount * this.config.dayWidth);
+        const dayWidth = this.config.dayWidth * zoom;
+        const baseWidth = this.config.paddingLeft + (daysCount * dayWidth);
         const baseHeight = this.config.headerHeight + this.config.gridHeight + this.config.footerHeight;
 
-        // Gestion Retina / Responsive
-        const containerWidth = this.canvas.parentElement.clientWidth || window.innerWidth;
-        const scale = containerWidth / baseWidth; 
-
-        const totalWidth = containerWidth;
-        const totalHeight = baseHeight * scale;
+        // NOUVEAU : Hauteur adaptée à la largeur du viewport en mode paysage
+        const container = this.canvas.parentElement;
+        const containerWidth = container.clientWidth || window.innerWidth;
+        
+        // En mode paysage, on adapte la hauteur à la largeur disponible
+        let canvasWidth, canvasHeight;
+        
+        if (window.innerHeight < window.innerWidth) {
+            // Mode paysage : on privilégie la hauteur disponible
+            canvasHeight = window.innerHeight - 60; // Moins l'header
+            const aspectRatio = baseWidth / baseHeight;
+            canvasWidth = Math.min(baseWidth * zoom, containerWidth);
+            
+            // Si le canvas est trop large, on adapte
+            if (canvasWidth > containerWidth) {
+                canvasWidth = containerWidth;
+            }
+        } else {
+            // Mode portrait : on garde le comportement normal
+            canvasWidth = Math.min(baseWidth * zoom, containerWidth);
+            canvasHeight = baseHeight * zoom;
+        }
 
         const dpr = window.devicePixelRatio || 1;
-        this.canvas.width = totalWidth * dpr;
-        this.canvas.height = totalHeight * dpr;
-        this.canvas.style.width = `${totalWidth}px`;
-        this.canvas.style.height = `${totalHeight}px`;
+        this.canvas.width = canvasWidth * dpr;
+        this.canvas.height = canvasHeight * dpr;
+        this.canvas.style.width = `${canvasWidth}px`;
+        this.canvas.style.height = `${canvasHeight}px`;
 
-        this.ctx.setTransform(1, 0, 0, 1, 0, 0); 
-        this.ctx.scale(dpr * scale, dpr * scale);
+        const scaleX = canvasWidth / baseWidth;
+        const scaleY = canvasHeight / baseHeight;
+        
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        this.ctx.scale(dpr * scaleX * zoom, dpr * scaleY * zoom);
 
-        // Fond de couleur selon le thème
+        // Fond
         this.ctx.fillStyle = this.config.colors.background;
-        this.ctx.fillRect(0, 0, baseWidth, baseHeight);
+        this.ctx.fillRect(0, 0, baseWidth / zoom, baseHeight / zoom);
         
         this.ctx.font = "12px sans-serif";
         this.ctx.fillStyle = this.config.colors.text;
 
-        // Dessin des éléments
-        this.drawGrid(daysCount, baseWidth);
-        this.drawData(cycle, analysis, entries);
-        this.drawBleeding(entries); // NOUVEAU : Dessin des saignements
+        // Dessin des éléments (avec ajustement du dayWidth pour le zoom)
+        this.drawGrid(daysCount, baseWidth / zoom, dayWidth / zoom);
+        this.drawData(cycle, analysis, entries, dayWidth / zoom);
+        this.drawBleeding(entries, dayWidth / zoom);
     }
 
     getYForTemp(temp) {
@@ -100,7 +116,7 @@ export class PaperRenderer {
         return this.config.headerHeight + (ratio * this.config.gridHeight);
     }
 
-    drawGrid(daysCount, totalWidth) {
+    drawGrid(daysCount, totalWidth, dayWidth) {
         const { ctx, config } = this;
         const bottomY = config.headerHeight + config.gridHeight;
 
@@ -117,7 +133,7 @@ export class PaperRenderer {
             ctx.moveTo(config.paddingLeft, y);
             ctx.lineTo(totalWidth, y);
             ctx.stroke();
-            ctx.beginPath(); 
+            ctx.beginPath();
 
             if (isMain) {
                 ctx.fillStyle = config.colors.text;
@@ -128,7 +144,7 @@ export class PaperRenderer {
         // Grille verticale (jours)
         ctx.strokeStyle = config.colors.grid;
         for (let i = 0; i <= daysCount; i++) {
-            const x = config.paddingLeft + (i * config.dayWidth);
+            const x = config.paddingLeft + (i * dayWidth);
             ctx.moveTo(x, 0);
             ctx.lineTo(x, bottomY + config.footerHeight);
             ctx.stroke();
@@ -136,7 +152,7 @@ export class PaperRenderer {
 
             if (i > 0 && i <= daysCount) {
                 ctx.fillStyle = config.colors.text;
-                ctx.fillText(i, x - (config.dayWidth / 2) - 4, bottomY + 20);
+                ctx.fillText(i, x - (dayWidth / 2) - 4, bottomY + 20);
             }
         }
 
@@ -150,41 +166,40 @@ export class PaperRenderer {
         ctx.stroke();
     }
 
-    drawData(cycle, analysis, entries) {
+    drawData(cycle, analysis, entries, dayWidth) {
         const { ctx, config } = this;
         
         let prevPoint = null;
 
         entries.forEach((e, index) => {
-            const xCenter = config.paddingLeft + (index * config.dayWidth) + (config.dayWidth / 2);
+            const xCenter = config.paddingLeft + (index * dayWidth) + (dayWidth / 2);
             
-            // DATE
+            // DATE (en bas, avec plus d'espace)
             const d = new Date(e.date);
             const dateStr = `${d.getDate()}/${d.getMonth() + 1}`;
             ctx.save();
-            ctx.font = "10px sans-serif";
+            ctx.font = "11px sans-serif";
             ctx.fillStyle = config.colors.text;
-            ctx.fillText(dateStr, xCenter - 12, config.headerHeight + config.gridHeight + 40);
+            ctx.fillText(dateStr, xCenter - 14, config.headerHeight + config.gridHeight + 50);
             ctx.restore();
 
-            // GLAIRE (symboles)
+            // GLAIRE (symboles au-dessus, mais avec moins d'espace)
             let mucusCode = "";
             if(e.mucusAspect === 'blanc_oeuf') mucusCode = "🥚";
             else if(e.mucusAspect === 'jaunatre') mucusCode = "🟡";
             else if(e.mucusSensation === 'mouillee') mucusCode = "💧";
-            else if(e.mucusSensation === 'seche') mucusCode = "t";
+            else if(e.mucusSensation === 'seche') mucusCode = "🌵";
             
             if(mucusCode) {
-                ctx.font = "16px sans-serif";
+                ctx.font = "14px sans-serif"; // Taille réduite
                 ctx.fillStyle = config.colors.text;
-                ctx.fillText(mucusCode, xCenter - 8, config.headerHeight - 10);
+                ctx.fillText(mucusCode, xCenter - 7, config.headerHeight - 8);
             }
 
             // TEMPÉRATURE
             if (e.temp && !e.excludeTemp) {
                 const y = this.getYForTemp(e.temp);
 
-                // CORRECTION : Tracer la ligne seulement s'il y a un point précédent
                 if (prevPoint) {
                     ctx.beginPath();
                     ctx.strokeStyle = config.colors.tempLine;
@@ -194,7 +209,6 @@ export class PaperRenderer {
                     ctx.stroke();
                 }
 
-                // Point de température
                 ctx.beginPath();
                 ctx.fillStyle = config.colors.tempDot;
                 
@@ -207,7 +221,6 @@ export class PaperRenderer {
 
                 prevPoint = { x: xCenter, y: y };
             } else {
-                // CORRECTION : Créer un "trou" si pas de température
                 prevPoint = null;
                 
                 if(e.excludeTemp && e.temp) {
@@ -217,7 +230,7 @@ export class PaperRenderer {
             }
         });
 
-        // COVERLINE (ligne de base)
+        // COVERLINE
         if (analysis && analysis.coverLine) {
             const yCover = this.getYForTemp(analysis.coverLine);
             ctx.beginPath();
@@ -225,40 +238,48 @@ export class PaperRenderer {
             ctx.lineWidth = 2;
             ctx.setLineDash([5, 5]);
             ctx.moveTo(config.paddingLeft, yCover);
-            ctx.lineTo(config.paddingLeft + (entries.length * config.dayWidth), yCover);
+            ctx.lineTo(config.paddingLeft + (entries.length * dayWidth), yCover);
             ctx.stroke();
             ctx.setLineDash([]);
         }
     }
 
-    // NOUVEAU : Dessin des saignements
-    drawBleeding(entries) {
+    drawBleeding(entries, dayWidth) {
         const { ctx, config } = this;
-        
+
+        ctx.font = "16px sans-serif"; // Taille de base
+
         entries.forEach((e, index) => {
             if (!e.bleeding || e.bleeding === 'none') return;
 
-            const xCenter = config.paddingLeft + (index * config.dayWidth) + (config.dayWidth / 2);
-            const yBaseline = config.headerHeight + config.gridHeight + 25; 
-            
-            ctx.fillStyle = config.colors.bleeding;
-            
-            switch(e.bleeding) {
-                case 'spotting':
-                    ctx.beginPath();
-                    ctx.arc(xCenter, yBaseline, 3, 0, Math.PI * 2);
-                    ctx.fill();
+            const xCenter = config.paddingLeft + (index * dayWidth) + (dayWidth / 2);
+            // NOUVEAU : Position plus basse pour éviter les chevauchements
+            const yBaseline = config.headerHeight + config.gridHeight + 70;
+
+            let emoji = "";
+            switch (e.bleeding) {
+                case "spotting":
+                    emoji = "💉";
                     break;
-                case 'light':
-                    ctx.fillRect(xCenter - 2, yBaseline - 6, 4, 12);
+                case "light":
+                    emoji = "🩸";
                     break;
-                case 'medium':
-                    ctx.fillRect(xCenter - 4, yBaseline - 10, 8, 20);
+                case "medium":
+                    emoji = "🩸🩸";
                     break;
-                case 'heavy':
-                    ctx.fillRect(xCenter - 6, yBaseline - 12, 12, 24);
+                case "heavy":
+                    emoji = "🩸🩸🩸";
                     break;
             }
+
+            ctx.save();
+            ctx.translate(xCenter, yBaseline);
+            ctx.rotate(-Math.PI / 2);
+            ctx.scale(0.4, 0.4); // Taille réduite
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(emoji, 0, 0);
+            ctx.restore();
         });
     }
 }
