@@ -375,26 +375,35 @@ export class UIManager {
                 
                 // Suppression
                 if (e.target.closest('.btn-delete-cycle')) {
+                    e.stopPropagation();
                     if (this.dm.deleteCycle(index)) {
                         this.refreshAll();
                     }
                     return;
                 }
                 
-                // Sélection du cycle (si on clique ailleurs que sur les actions)
+                // Empêcher la sélection si on clique sur un input
+                if (e.target.classList.contains('cycle-id-input') || 
+                    e.target.classList.contains('cycle-date-input')) {
+                    e.stopPropagation();
+                    return;
+                }
+                
+                // Sélection du cycle
                 if (!e.target.closest('.cycle-actions-cell')) {
                     this.dm.setActiveCycleIndex(index);
                     this.refreshAll();
                 }
             });
             
-            // Édition des champs
-            tbody.addEventListener('change', (e) => {
+            // CORRECTION : Édition des champs avec blur au lieu de change
+            tbody.addEventListener('blur', (e) => {
                 if (e.target.classList.contains('cycle-id-input')) {
                     const index = parseInt(e.target.dataset.index);
                     const newId = parseInt(e.target.value);
                     if (newId && newId > 0) {
                         this.dm.updateCycleId(index, newId);
+                        this.refreshAll();
                     }
                 }
                 
@@ -406,7 +415,7 @@ export class UIManager {
                         this.refreshAll();
                     }
                 }
-            });
+            }, true); // Utiliser capture pour attraper les événements blur
         }
     }
     
@@ -417,7 +426,11 @@ export class UIManager {
         const cycles = this.dm.getAllCycles();
         const activeIndex = this.dm.getActiveCycleIndex();
         
-        tbody.innerHTML = cycles.map((c, i) => {
+        // CORRECTION : Trier par date de début (du plus ancien au plus récent)
+        const sortedCycles = cycles.map((c, originalIndex) => ({ ...c, originalIndex }))
+            .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+        
+        tbody.innerHTML = sortedCycles.map((c) => {
             const startDate = new Date(c.startDate);
             const entriesCount = c.entries.length;
             
@@ -431,20 +444,20 @@ export class UIManager {
                 duration = `${days}j`;
             }
             
-            const isCurrent = i === activeIndex;
+            const isCurrent = c.originalIndex === activeIndex;
             
             return `
-                <tr class="${isCurrent ? 'active-cycle' : ''}" data-index="${i}">
+                <tr class="${isCurrent ? 'active-cycle' : ''}" data-index="${c.originalIndex}">
                     <td>
-                        <input type="number" class="cycle-id-input" value="${c.id}" data-index="${i}" min="1">
+                        <input type="number" class="cycle-id-input" value="${c.id}" data-index="${c.originalIndex}" min="1">
                     </td>
                     <td>
-                        <input type="date" class="cycle-date-input" value="${c.startDate}" data-index="${i}">
+                        <input type="date" class="cycle-date-input" value="${c.startDate}" data-index="${c.originalIndex}">
                     </td>
                     <td>${duration}</td>
                     <td>${entriesCount}</td>
                     <td class="cycle-actions-cell">
-                        <button class="btn-icon-small danger btn-delete-cycle" data-index="${i}" title="Supprimer">🗑️</button>
+                        <button class="btn-icon-small danger btn-delete-cycle" data-index="${c.originalIndex}" title="Supprimer">🗑️</button>
                     </td>
                 </tr>
             `;

@@ -1,3 +1,5 @@
+import { CycleComputer } from './cycleComputer.js';
+
 export class PaperRenderer {
     constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
@@ -5,7 +7,7 @@ export class PaperRenderer {
 
         this.config = {
             dayWidth: 30,
-            headerHeight: 40,  // RÉDUIT : moins d'espace au-dessus
+            headerHeight: 60,  // AUGMENTÉ : besoin de place pour 3 lignes de glaire
             footerHeight: 100, // AUGMENTÉ : plus d'espace pour dates/saignements
             tempMin: 36.0,
             tempMax: 37.0,
@@ -183,18 +185,62 @@ export class PaperRenderer {
             ctx.fillText(dateStr, xCenter - 14, config.headerHeight + config.gridHeight + 50);
             ctx.restore();
 
-            // GLAIRE (symboles au-dessus, mais avec moins d'espace)
-            let mucusCode = "";
-            if(e.mucusAspect === 'blanc_oeuf') mucusCode = "🥚";
-            else if(e.mucusAspect === 'jaunatre') mucusCode = "🟡";
-            else if(e.mucusSensation === 'mouillee') mucusCode = "💧";
-            else if(e.mucusSensation === 'seche') mucusCode = "🌵";
+            // NOUVEAU : GLAIRE SUR 3 LIGNES
+            const yGlaire1 = config.headerHeight - 35; // Ligne 1 : Sensation
+            const yGlaire2 = config.headerHeight - 20; // Ligne 2 : Aspect
+            const yGlaire3 = config.headerHeight - 5;  // Ligne 3 : Code résultant
             
-            if(mucusCode) {
-                ctx.font = "14px sans-serif"; // Taille réduite
-                ctx.fillStyle = config.colors.text;
-                ctx.fillText(mucusCode, xCenter - 7, config.headerHeight - 8);
+            ctx.save();
+            ctx.font = "10px sans-serif";
+            ctx.fillStyle = config.colors.text;
+            
+            // Ligne 1 : SENSATION
+            if (e.mucusSensation && e.mucusSensation !== 'none' && e.mucusSensation !== 'rien') {
+                let sensationEmoji = "";
+                switch(e.mucusSensation) {
+                    case 'seche': sensationEmoji = "🌵"; break;
+                    case 'humide': sensationEmoji = "💧"; break;
+                    case 'mouillee': sensationEmoji = "💦"; break;
+                    case 'glissante': sensationEmoji = "⛸️"; break;
+                }
+                if (sensationEmoji) {
+                    ctx.fillText(sensationEmoji, xCenter - 6, yGlaire1);
+                }
             }
+            
+            // Ligne 2 : ASPECT
+            if (e.mucusAspect && e.mucusAspect !== 'none' && e.mucusAspect !== 'rien') {
+                let aspectEmoji = "";
+                switch(e.mucusAspect) {
+                    case 'cremeux': aspectEmoji = "🥛"; break;
+                    case 'jaunatre': aspectEmoji = "🟡"; break;
+                    case 'blanc_oeuf': aspectEmoji = "🥚"; break;
+                    case 'filant': aspectEmoji = "🧵"; break;
+                    case 'collant': aspectEmoji = "📎"; break;
+                }
+                if (aspectEmoji) {
+                    ctx.fillText(aspectEmoji, xCenter - 6, yGlaire2);
+                }
+            }
+            
+            // Ligne 3 : CODE RÉSULTANT (h, G, G+, t, --)
+            const mucusCode = CycleComputer.classifyMucus(e.mucusSensation, e.mucusAspect);
+            if (mucusCode && mucusCode !== '--') {
+                ctx.font = "bold 11px sans-serif";
+                let codeColor = config.colors.text;
+                
+                // Couleurs selon le code
+                if (mucusCode === 'G+') codeColor = '#d81b60'; // Rose foncé
+                else if (mucusCode === 'G') codeColor = '#ff9800'; // Orange
+                else if (mucusCode === 'h') codeColor = '#2196f3'; // Bleu
+                else if (mucusCode === 't') codeColor = '#9e9e9e'; // Gris
+                
+                ctx.fillStyle = codeColor;
+                const codeWidth = ctx.measureText(mucusCode).width;
+                ctx.fillText(mucusCode, xCenter - (codeWidth / 2), yGlaire3);
+            }
+            
+            ctx.restore();
 
             // TEMPÉRATURE
             if (e.temp && !e.excludeTemp) {

@@ -28,27 +28,24 @@
 <body>
 
     <header class="app-header">
-        <div class="brand">SensiTrack</div>
-        
-        <!-- NOUVEAU : Sélecteur de cycle avec flèches -->
-        <div class="cycle-nav-compact">
-            <button id="btn-prev-cycle" class="cycle-arrow" title="Cycle précédent">‹</button>
-            <div id="cycle-display-compact" class="cycle-label">Cycle #1</div>
-            <button id="btn-next-cycle" class="cycle-arrow" title="Cycle suivant">›</button>
+        <div class="header-row-1">
+            <div class="brand">SensiTrack</div>
+            <div class="cycle-nav-compact">
+                <button id="btn-prev-cycle" class="cycle-arrow" title="Cycle précédent">‹</button>
+                <div id="cycle-display-compact" class="cycle-label">Cycle #1</div>
+                <button id="btn-next-cycle" class="cycle-arrow" title="Cycle suivant">›</button>
+            </div>
+            <button id="theme-toggle" class="theme-switch">
+                <span class="icon-sun">☀️</span>
+                <span class="icon-moon">🌙</span>
+            </button>
         </div>
         
-        <button id="theme-toggle" class="theme-switch">
-            <span class="icon-sun">☀️</span>
-            <span class="icon-moon">🌙</span>
-        </button>
-    </header>
-
-    <section class="control-zone">
-        <div class="input-group-centered">
+        <div class="header-row-2">
             <input type="date" id="global-date">
             <input type="time" id="global-time">
         </div>
-    </section>
+    </header>
 
     <nav class="tab-bar">
         <button class="tab-btn active" data-target="temp-panel">Temp</button>
