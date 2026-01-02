@@ -205,24 +205,16 @@ export class UIManager {
 						this.dom.btnOpenChart.addEventListener('click', async () => {
 								this.dom.overlay.classList.remove('hidden');
 								this.chartZoom = 1.0;
-								
-								// Forcer un premier rendu
 								this.updateGlobalUI();
 
-								// Tenter de verrouiller en mode paysage
 								if (screen.orientation && screen.orientation.lock) {
-										try {
-												await screen.orientation.lock('landscape');
-										} catch (err) {
-												console.log("Rotation forcée bloquée");
-										}
+										try { await screen.orientation.lock('landscape'); } catch (err) { console.log("Rotation forcée bloquée"); }
 								}
-								
-								// Redessiner après un délai pour s'assurer que le DOM est à jour
+
 								setTimeout(() => {
 										this.updateGlobalUI();
 										const container = document.getElementById('canvas-scroll-container');
-										if(container) container.scrollLeft = container.scrollWidth;
+										if (container) container.scrollLeft = 0;
 								}, 200);
 						});
 				}
@@ -235,45 +227,177 @@ export class UIManager {
 								this.dom.overlay.classList.add('hidden');
 						});
 				}
-				
-				// Gestion du changement d'orientation
+
 				window.addEventListener('orientationchange', () => {
 						if (!this.dom.overlay.classList.contains('hidden')) {
-								setTimeout(() => {
-										this.updateGlobalUI();
-								}, 300);
+								setTimeout(() => { this.updateGlobalUI(); }, 300);
 						}
 				});
-				
-				// Gestion du redimensionnement
 				window.addEventListener('resize', () => {
 						if (!this.dom.overlay.classList.contains('hidden')) {
 								this.updateGlobalUI();
 						}
 				});
-				
-				// Contrôles de zoom
-				if (this.dom.btnZoomIn) {
-						this.dom.btnZoomIn.addEventListener('click', () => {
-								this.chartZoom = Math.min(3.0, this.chartZoom + 0.2);
-								this.updateGlobalUI();
-						});
+
+				const container = document.getElementById('canvas-scroll-container') || this.dom.overlay;
+				if (!container) return;
+
+				// Fonction utilitaire pour activer/désactiver touch-action selon le zoom
+				const updateContainerTouchAction = () => {
+						// Si zoom === 1, laisser le navigateur gérer le scroll natif
+						container.style.touchAction = (this.chartZoom && this.chartZoom !== 1.0) ? 'none' : 'auto';
+				};
+
+				// Appeler au démarrage (overlay ouvert)
+				updateContainerTouchAction();
+
+				const self = this;
+				let pointers = new Map();
+				let pinchStartDist = 0;
+				let pinchStartZoom = this.chartZoom || 1.0;
+				let lastTap = 0;
+				let isDragging = false;
+				let lastPointerPos = null;
+
+				function getDistance(p1, p2) {
+						const dx = p2.clientX - p1.clientX;
+						const dy = p2.clientY - p1.clientY;
+						return Math.hypot(dx, dy);
 				}
-				
-				if (this.dom.btnZoomOut) {
-						this.dom.btnZoomOut.addEventListener('click', () => {
-								this.chartZoom = Math.max(0.5, this.chartZoom - 0.2);
-								this.updateGlobalUI();
-						});
+				function getCenter(p1, p2) {
+						return { x: (p1.clientX + p2.clientX) / 2, y: (p1.clientY + p2.clientY) / 2 };
 				}
-				
-				if (this.dom.btnZoomReset) {
-						this.dom.btnZoomReset.addEventListener('click', () => {
+
+				container.addEventListener('pointerdown', (e) => {
+						container.setPointerCapture && container.setPointerCapture(e.pointerId);
+						pointers.set(e.pointerId, e);
+
+						const now = Date.now();
+						if (now - lastTap < 300) {
 								this.chartZoom = 1.0;
 								this.updateGlobalUI();
-						});
-				}
+								updateContainerTouchAction();
+						}
+						lastTap = now;
+
+						if (pointers.size === 1 && (this.chartZoom && this.chartZoom !== 1.0)) {
+								isDragging = true;
+								lastPointerPos = { x: e.clientX, y: e.clientY };
+						}
+
+						if (pointers.size === 2) {
+								const pts = Array.from(pointers.values());
+								pinchStartDist = getDistance(pts[0], pts[1]);
+								pinchStartZoom = this.chartZoom || 1.0;
+						}
+				}, { passive: true });
+
+				container.addEventListener('pointermove', (e) => {
+						if (!pointers.has(e.pointerId)) return;
+						pointers.set(e.pointerId, e);
+
+						// PINCH (2 pointeurs)
+						if (pointers.size === 2) {
+								const pts = Array.from(pointers.values());
+								const curDist = getDistance(pts[0], pts[1]);
+								if (pinchStartDist > 0) {
+										const center = getCenter(pts[0], pts[1]);
+										const rect = container.getBoundingClientRect();
+										const centerX = center.x - rect.left;
+										const centerY = center.y - rect.top;
+
+										const oldZoom = pinchStartZoom;
+										const scale = curDist / pinchStartDist;
+										const newZoom = Math.max(0.5, Math.min(3.0, pinchStartZoom * scale));
+										if (newZoom === this.chartZoom) return;
+
+										const ratio = newZoom / oldZoom;
+										const prevScrollLeft = container.scrollLeft;
+										const prevScrollTop = container.scrollTop;
+										const newScrollLeft = Math.max(0, Math.round((prevScrollLeft + centerX) * ratio - centerX));
+										const newScrollTop = Math.max(0, Math.round((prevScrollTop + centerY) * ratio - centerY));
+
+										this.chartZoom = newZoom;
+										updateContainerTouchAction();
+										this.updateGlobalUI();
+
+										setTimeout(() => {
+												container.scrollLeft = newScrollLeft;
+												container.scrollTop = newScrollTop;
+										}, 0);
+
+										e.preventDefault && e.preventDefault();
+								}
+								return;
+						}
+
+						// PAN (1 pointeur) quand zoom != 1
+						if (isDragging && pointers.size === 1 && lastPointerPos) {
+								const dx = e.clientX - lastPointerPos.x;
+								const dy = e.clientY - lastPointerPos.y;
+								container.scrollLeft -= dx;
+								container.scrollTop -= dy;
+								lastPointerPos = { x: e.clientX, y: e.clientY };
+								e.preventDefault && e.preventDefault();
+						}
+				}, { passive: false });
+
+				container.addEventListener('pointerup', (e) => {
+						pointers.delete(e.pointerId);
+						try { container.releasePointerCapture && container.releasePointerCapture(e.pointerId); } catch (err) {}
+						if (pointers.size < 2) pinchStartDist = 0;
+						if (pointers.size === 0) { isDragging = false; lastPointerPos = null; }
+				}, { passive: true });
+
+				container.addEventListener('pointercancel', (e) => {
+						pointers.delete(e.pointerId);
+						pinchStartDist = 0;
+						isDragging = false;
+						lastPointerPos = null;
+				}, { passive: true });
+
+				// Wheel / trackpad zoom centré sur la souris
+				container.addEventListener('wheel', (e) => {
+						// On considère zoom si Ctrl+wheel ou trackpad (delta small)
+						const rect = container.getBoundingClientRect();
+						const centerX = e.clientX - rect.left;
+						const centerY = e.clientY - rect.top;
+
+						const delta = e.deltaY;
+						const factor = e.ctrlKey ? 0.0015 : 0.0025;
+						const change = 1 - (delta * factor);
+						const newZoom = Math.max(0.5, Math.min(3.0, this.chartZoom * change));
+						if (newZoom === this.chartZoom) return;
+
+						const ratio = newZoom / this.chartZoom;
+						const prevScrollLeft = container.scrollLeft;
+						const prevScrollTop = container.scrollTop;
+						const newScrollLeft = Math.max(0, Math.round((prevScrollLeft + centerX) * ratio - centerX));
+						const newScrollTop = Math.max(0, Math.round((prevScrollTop + centerY) * ratio - centerY));
+
+						this.chartZoom = newZoom;
+						updateContainerTouchAction();
+						this.updateGlobalUI();
+						setTimeout(() => {
+								container.scrollLeft = newScrollLeft;
+								container.scrollTop = newScrollTop;
+						}, 0);
+
+						e.preventDefault();
+				}, { passive: false });
+
+				// Empêcher le scroll natif pendant pinch (touchmove) uniquement si 2 touches
+				container.addEventListener('touchmove', (e) => {
+						if (e.touches && e.touches.length === 2) {
+								e.preventDefault();
+						}
+				}, { passive: false });
+
+				// S'assurer que touch-action est correct quand on ouvre/ferme l'overlay
+				const observer = new MutationObserver(() => updateContainerTouchAction());
+				observer.observe(this.dom.overlay, { attributes: true, attributeFilter: ['class'] });
 		}
+
 
     initInputs() {
         this.dom.date.addEventListener('change', () => this.loadDataForCurrentDate());
