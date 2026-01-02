@@ -199,60 +199,81 @@ export class UIManager {
             this.dom.btnNextCycle.disabled = activeIndex === cycles.length - 1;
         }
     }
-    
-    initChartOverlay() {
-        if (this.dom.btnOpenChart) {
-            this.dom.btnOpenChart.addEventListener('click', async () => {
-                this.dom.overlay.classList.remove('hidden');
-                this.chartZoom = 1.0;
-                this.updateGlobalUI();
+		
+		initChartOverlay() {
+				if (this.dom.btnOpenChart) {
+						this.dom.btnOpenChart.addEventListener('click', async () => {
+								this.dom.overlay.classList.remove('hidden');
+								this.chartZoom = 1.0;
+								
+								// Forcer un premier rendu
+								this.updateGlobalUI();
 
-                if (screen.orientation && screen.orientation.lock) {
-                    try {
-                        await screen.orientation.lock('landscape');
-                    } catch (err) {
-                        console.log("Rotation forcée bloquée");
-                    }
-                }
-                
-                setTimeout(() => {
-                    const container = document.getElementById('canvas-scroll-container');
-                    if(container) container.scrollLeft = container.scrollWidth;
-                }, 150);
-            });
-        }
+								// Tenter de verrouiller en mode paysage
+								if (screen.orientation && screen.orientation.lock) {
+										try {
+												await screen.orientation.lock('landscape');
+										} catch (err) {
+												console.log("Rotation forcée bloquée");
+										}
+								}
+								
+								// Redessiner après un délai pour s'assurer que le DOM est à jour
+								setTimeout(() => {
+										this.updateGlobalUI();
+										const container = document.getElementById('canvas-scroll-container');
+										if(container) container.scrollLeft = container.scrollWidth;
+								}, 200);
+						});
+				}
 
-        if (this.dom.btnCloseChart) {
-            this.dom.btnCloseChart.addEventListener('click', () => {
-                if (screen.orientation && screen.orientation.unlock) {
-                    screen.orientation.unlock();
-                }
-                this.dom.overlay.classList.add('hidden');
-            });
-        }
-        
-        // NOUVEAU : Contrôles de zoom
-        if (this.dom.btnZoomIn) {
-            this.dom.btnZoomIn.addEventListener('click', () => {
-                this.chartZoom = Math.min(3.0, this.chartZoom + 0.2);
-                this.updateGlobalUI();
-            });
-        }
-        
-        if (this.dom.btnZoomOut) {
-            this.dom.btnZoomOut.addEventListener('click', () => {
-                this.chartZoom = Math.max(0.5, this.chartZoom - 0.2);
-                this.updateGlobalUI();
-            });
-        }
-        
-        if (this.dom.btnZoomReset) {
-            this.dom.btnZoomReset.addEventListener('click', () => {
-                this.chartZoom = 1.0;
-                this.updateGlobalUI();
-            });
-        }
-    }
+				if (this.dom.btnCloseChart) {
+						this.dom.btnCloseChart.addEventListener('click', () => {
+								if (screen.orientation && screen.orientation.unlock) {
+										screen.orientation.unlock();
+								}
+								this.dom.overlay.classList.add('hidden');
+						});
+				}
+				
+				// Gestion du changement d'orientation
+				window.addEventListener('orientationchange', () => {
+						if (!this.dom.overlay.classList.contains('hidden')) {
+								setTimeout(() => {
+										this.updateGlobalUI();
+								}, 300);
+						}
+				});
+				
+				// Gestion du redimensionnement
+				window.addEventListener('resize', () => {
+						if (!this.dom.overlay.classList.contains('hidden')) {
+								this.updateGlobalUI();
+						}
+				});
+				
+				// Contrôles de zoom
+				if (this.dom.btnZoomIn) {
+						this.dom.btnZoomIn.addEventListener('click', () => {
+								this.chartZoom = Math.min(3.0, this.chartZoom + 0.2);
+								this.updateGlobalUI();
+						});
+				}
+				
+				if (this.dom.btnZoomOut) {
+						this.dom.btnZoomOut.addEventListener('click', () => {
+								this.chartZoom = Math.max(0.5, this.chartZoom - 0.2);
+								this.updateGlobalUI();
+						});
+				}
+				
+				if (this.dom.btnZoomReset) {
+						this.dom.btnZoomReset.addEventListener('click', () => {
+								this.chartZoom = 1.0;
+								this.updateGlobalUI();
+						});
+				}
+		}
 
     initInputs() {
         this.dom.date.addEventListener('change', () => this.loadDataForCurrentDate());
