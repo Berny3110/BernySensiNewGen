@@ -45,6 +45,11 @@ export class PaperRenderer {
         this.updateThemeColors();
     }
 		
+		roundTempForDisplay(temp) {
+				return Math.round(temp * 20) / 20;
+		}
+
+		
 		// Calcule le jour de cycle (1, 2, 3...) pour une date donnée
 		getCycleDay(entryDate, cycleStartDate) {
 				const start = new Date(cycleStartDate);
@@ -136,14 +141,17 @@ export class PaperRenderer {
 				this.drawBleeding(cycle, entries, dayWidth);
 		}
 
-    getYForTemp(temp) {
-        if (temp > this.config.tempMax) temp = this.config.tempMax;
-        if (temp < this.config.tempMin) temp = this.config.tempMin;
+		getYForTemp(temp) {
+				temp = this.roundTempForDisplay(temp);
 
-        const range = this.config.tempMax - this.config.tempMin;
-        const ratio = (this.config.tempMax - temp) / range;
-        return this.config.headerHeight + (ratio * this.config.gridHeight);
-    }
+				if (temp > this.config.tempMax) temp = this.config.tempMax;
+				if (temp < this.config.tempMin) temp = this.config.tempMin;
+
+				const range = this.config.tempMax - this.config.tempMin;
+				const ratio = (this.config.tempMax - temp) / range;
+				return this.config.headerHeight + (ratio * this.config.gridHeight);
+		}
+
 
     drawGrid(daysCount, totalWidth, dayWidth) {
         const { ctx, config } = this;
@@ -272,7 +280,9 @@ export class PaperRenderer {
 
 						// TEMPÉRATURE
 						if (e.temp && !e.excludeTemp) {
-								const y = this.getYForTemp(e.temp);
+								const rawTemp = e.temp;
+								const rounded = this.roundTempForDisplay(rawTemp);
+								const y = this.getYForTemp(rounded);
 
 								if (prevPoint && prevCycleDay !== null) {
 										ctx.beginPath();
