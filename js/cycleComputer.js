@@ -68,13 +68,16 @@ export class CycleComputer {
         return weights[code] || 0;
     }
 
-		static analyzeCycle(cycle) {
-				if (!cycle || !cycle.entries || cycle.entries.length === 0) {
+		static analyzeCycle(cycle, options = { allowTempOnly: false }) {
+				// Analyse complète d'un cycle selon règles Sensiplan (version stricte par défaut)
+				// options.allowTempOnly : si true, autorise la validation par température seule (cas rare)
+				if (!cycle || !Array.isArray(cycle.entries) || cycle.entries.length === 0) {
 						return null;
 				}
 
+				// Clone et tri des entrées par date croissante
 				const entries = [...cycle.entries].sort((a, b) => new Date(a.date) - new Date(b.date));
-				
+
 				const analysis = {
 						peakDayIndex: null,
 						coverLine: null,
@@ -82,65 +85,78 @@ export class CycleComputer {
 						highTempIndices: [],
 						bleedingDays: [],
 						spottingDays: [],
+						retreatIndices: [],
 						postOvulatoryInfertileStartIndex: null
 				};
 
-				// --- 1. Repérage Saignements vs Spotting ---
+				// Helpers
+				const classify = (sensation, aspect) => CycleComputer.classifyMucus(sensation, aspect);
+				const weightOf = (code) => CycleComputer.getMucusWeight(code);
+				const isValidTemp = (entry) => entry && typeof entry.temp === 'number' && !entry.excludeTemp;
+
+				// --- 1. Repérage saignements / spotting
 				entries.forEach((e, idx) => {
 						if (e.bleeding) {
-								if (e.bleeding === 'spotting') {
-										analysis.spottingDays.push(idx);
-								} else if (e.bleeding !== 'none') {
-										analysis.bleedingDays.push(idx);
-								}
+								if (e.bleeding === 'spotting') analysis.spottingDays.push(idx);
+								else if (e.bleeding !== 'none') analysis.bleedingDays.push(idx);
 						}
 				});
 
-				// --- 2. Détection du Sommet (Peak Day) selon glaire ---
+				// --- 2. Détection du Pic de glaire (peakDayIndex)
+				// On repère le dernier jour avec poids >= 3 (G ou G+), puis on confirme rétrospectivement
 				let potentialPeak = null;
 				let peakWeight = 0;
-				
 				for (let i = 0; i < entries.length; i++) {
 						const e = entries[i];
-						const code = this.classifyMucus(e.mucusSensation, e.mucusAspect);
-						const weight = this.getMucusWeight(code);
-
-						if (weight >= 3) {
-								if (weight >= peakWeight) {
+						const code = classify(e.mucusSensation, e.mucusAspect);
+						const w = weightOf(code);
+						if (w >= 3) {
+								// on prend le dernier jour le plus fertile rencontré (poids >= 3)
+								if (w >= peakWeight) {
 										potentialPeak = i;
-										peakWeight = weight;
+										peakWeight = w;
 								}
 						}
 				}
-				
-				// Validation muqueuse du pic : doit être suivi de jours de moindre fertilité (au moins un des 3 suivants)
+
+				// Confirmation rétrospective : les 3 jours suivants doivent être de qualité moindre (poids < peakWeight)
 				if (potentialPeak !== null && potentialPeak < entries.length - 1) {
 						let confirmed = false;
-						
-						for (let i = 1; i <= 3 && (potentialPeak + i) < entries.length; i++) {
-								const nextEntry = entries[potentialPeak + i];
-								const nextCode = this.classifyMucus(nextEntry.mucusSensation, nextEntry.mucusAspect);
-								const nextWeight = this.getMucusWeight(nextCode);
-								
-								if (nextWeight < peakWeight) {
-										confirmed = true;
-										break;
+						let lesserCount = 0;
+						for (let k = 1; k <= 3 && (potentialPeak + k) < entries.length; k++) {
+								const next = entries[potentialPeak + k];
+								const nextCode = classify(next.mucusSensation, next.mucusAspect);
+								const nextW = weightOf(nextCode);
+								if (nextW < peakWeight) lesserCount++;
+						}
+						if (lesserCount >= 1 && lesserCount === Math.min(3, entries.length - 1 - potentialPeak)) {
+								// Si on a au moins 1 jour de moindre qualité parmi les 3 suivants et pas d'incohérence majeure,
+								// on considère le pic confirmé. (Comportement conservateur : on exige que les jours disponibles
+								// après le pic montrent une tendance à la baisse ; si moins de 3 jours disponibles, on exige cohérence)
+								confirmed = true;
+						} else {
+								// Variante plus stricte : exiger que les 3 jours suivants (s'ils existent) soient tous de moindre poids.
+								// Ici on applique une règle intermédiaire : si 3 jours disponibles, ils doivent être tous < peakWeight.
+								if ((potentialPeak + 3) < entries.length) {
+										let allLesser = true;
+										for (let k = 1; k <= 3; k++) {
+												const next = entries[potentialPeak + k];
+												const nextW = weightOf(classify(next.mucusSensation, next.mucusAspect));
+												if (nextW >= peakWeight) { allLesser = false; break; }
+										}
+										if (allLesser) confirmed = true;
 								}
 						}
-						
-						if (confirmed) {
-								analysis.peakDayIndex = potentialPeak;
-						}
+
+						if (confirmed) analysis.peakDayIndex = potentialPeak;
 				}
 
-				// --- 3. Température (Règle Sensiplan avec exceptions strictes) ---
-				const isValidTemp = (entry) => entry && typeof entry.temp === 'number' && !entry.excludeTemp;
-
-				// Parcours : on cherche un index i tel que les 6 précédents valides existent (ou au moins 4 valides)
+				// --- 3. Détection de la montée thermique (règle 6 basses / 3 hautes + exceptions)
+				// On parcourt les fenêtres possibles : pour chaque index i >= 6 on considère les 6 précédents
 				for (let i = 6; i < entries.length; i++) {
-						// Récupérer les 6 températures basses précédentes (valide = non excludeTemp)
-						let lowTemps = [];
-						let lowIndices = [];
+						// Récupérer jusqu'à 6 températures valides précédentes
+						const lowTemps = [];
+						const lowIndices = [];
 						for (let k = 1; k <= 6; k++) {
 								const prev = entries[i - k];
 								if (prev && isValidTemp(prev)) {
@@ -148,42 +164,39 @@ export class CycleComputer {
 										lowIndices.push(i - k);
 								}
 						}
-
-						// Besoin d'au moins 4 températures valides parmi les 6
+						// Besoin d'au moins 4 basses valides parmi les 6
 						if (lowTemps.length < 4) continue;
 
 						const maxLow = Math.max(...lowTemps);
 
-						// Recherche des hautes après l'index i (on commence à i)
-						let highs = []; // indices des jours avec temp > maxLow
-						let exception2Used = false; // si on a ignoré une retombée (temp <= maxLow)
-						let lowStreak = 0; // nombre de retombées consécutives rencontrées entre hautes
-						let j = i;
-
-						// On parcourt jusqu'à la fin pour collecter hautes en respectant la règle "une seule retombée"
+						// Parcours pour collecter hautes en respectant au plus une retombée (exception 2)
+						const highs = [];
+						let exception2Used = false;
+						let consecutiveLows = 0;
+						let j = i; // on commence à i (inclut le jour i)
 						while (j < entries.length && highs.length < 3) {
 								const cur = entries[j];
 								if (!isValidTemp(cur)) { j++; continue; }
 
 								if (cur.temp > maxLow) {
 										highs.push(j);
-										lowStreak = 0; // reset streak dès qu'on trouve une haute
+										consecutiveLows = 0;
 								} else {
-										// temp <= maxLow : candidate pour exception 2
-										lowStreak++;
-										if (lowStreak === 1) {
-												// on peut ignorer une seule retombée
+										// retombée candidate
+										consecutiveLows++;
+										if (consecutiveLows === 1) {
+												// on peut ignorer une seule retombée (exception 2)
 												exception2Used = true;
-												// on continue la recherche sans ajouter d'indice
+												analysis.retreatIndices.push(j);
+												// on continue sans ajouter d'indice
 										} else {
-												// deuxième retombée consécutive -> on ne peut plus ignorer, fenêtre invalide
+												// deuxième retombée consécutive -> fenêtre invalide
 												break;
 										}
 								}
 								j++;
 						}
 
-						// Si on a 3 hautes collectées (en respectant max 1 retombée entre elles)
 						if (highs.length >= 3) {
 								const thirdHighTemp = entries[highs[2]].temp;
 
@@ -192,14 +205,12 @@ export class CycleComputer {
 										analysis.coverLine = maxLow;
 										analysis.highTempIndices = highs.slice(0, 3);
 										analysis.tempShiftConfirmedIndex = highs[2];
-										analysis.postOvulatoryInfertileStartIndex = highs[2] + 1;
+										// on ne fixe pas encore postOvulatoryInfertileStartIndex ici (voir section finale)
 										break;
 								}
 
-								// Si la 3ème haute n'atteint pas +0.2, on peut appliquer Exception 1
-								// Exception 1 n'est pas applicable si on a utilisé Exception 2
+								// Exception 1 : chercher une 4ème haute >= maxLow + 0.2 si exception2 n'a pas été utilisée
 								if (!exception2Used) {
-										// Chercher une 4ème haute (temp > maxLow) après highs[2] qui soit >= maxLow + 0.2
 										let k = highs[2] + 1;
 										let foundFourth = null;
 										let interveningLow = false;
@@ -211,23 +222,19 @@ export class CycleComputer {
 																foundFourth = k;
 																break;
 														} else {
-																// une haute mais pas assez haute, on continue (mais si une retombée survient après, exception1 échoue)
 																k++;
 																continue;
 														}
 												} else {
-														// si on rencontre une retombée après la 3ème haute, on ne peut pas appliquer exception1
+														// retombée après la 3ème haute -> exception1 échoue
 														interveningLow = true;
 														break;
 												}
 										}
-
 										if (foundFourth !== null && !interveningLow) {
-												// montée validée par Exception 1
 												analysis.coverLine = maxLow;
 												analysis.highTempIndices = highs.slice(0, 3);
 												analysis.tempShiftConfirmedIndex = foundFourth;
-												analysis.postOvulatoryInfertileStartIndex = foundFourth + 1;
 												break;
 										}
 								}
@@ -236,11 +243,46 @@ export class CycleComputer {
 								continue;
 						}
 
-						// Cas : pas assez de hautes trouvées -> continuer
-						
+						// pas assez de hautes -> continuer
 				}
-				
+
+				// --- 4. Début infertile post‑ovulatoire (Sensiplan strict) ---
+				// On calcule des candidats exprimés en "startIndex" utilisable par le renderer,
+				// c.-à-d. le nombre de jours complets écoulés depuis le début (0 = début du jour 1).
+
+				let mucusCandidateStart = null;
+				if (analysis.peakDayIndex !== null) {
+						// peakDayIndex est 0-based (ex: 7 = jour 8)
+						// "soir du 3e jour après le pic" = fin du jour (peakDay + 3)
+						// startIndex = (peakDayIndex + 1) + 3 = peakDayIndex + 4
+						mucusCandidateStart = analysis.peakDayIndex + 4;
+				}
+
+				let tempCandidateStart = null;
+				if (analysis.tempShiftConfirmedIndex !== null) {
+						// tempShiftConfirmedIndex est l'indice 0-based de la 3ème haute (ou 4ème validante)
+						// "soir du 3e jour de température haute" = fin du jour correspondant à tempShiftConfirmedIndex + 1
+						// startIndex = tempShiftConfirmedIndex + 1
+						tempCandidateStart = analysis.tempShiftConfirmedIndex + 1;
+				}
+
+				// RÈGLE SENSIPLAN STRICTE : la porte qui s'ouvre EN DERNIER gagne
+				if (mucusCandidateStart !== null && tempCandidateStart !== null) {
+						analysis.postOvulatoryInfertileStartIndex = Math.max(mucusCandidateStart, tempCandidateStart);
+				} else {
+						// Si l'un manque → pas d'infertilité post‑ovulatoire (sauf option allowTempOnly)
+						if (options && options.allowTempOnly && tempCandidateStart !== null) {
+								analysis.postOvulatoryInfertileStartIndex = tempCandidateStart;
+						} else {
+								analysis.postOvulatoryInfertileStartIndex = null;
+						}
+				}
+
 				return analysis;
+
+				return analysis;
+
 		}
+
 
 }
