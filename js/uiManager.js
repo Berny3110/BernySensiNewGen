@@ -683,6 +683,10 @@ export class UIManager {
     updateGlobalUI() {
         const cycle = this.dm.getCurrentCycle();
         const analysis = CycleComputer.analyzeCycle(cycle);
+				
+				console.log("🔥 ANALYSE COURANTE :", analysis);
+				console.log("🔥 CYCLE COURANT :", cycle);
+
         
         if (this.paperChart) {
             this.paperChart.render(cycle, analysis, this.chartZoom);

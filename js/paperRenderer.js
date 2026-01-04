@@ -38,7 +38,8 @@ export class PaperRenderer {
                 text: '#333333',
                 coverLine: '#00bfa5',
                 peak: '#ff4081',
-                bleeding: '#d32f2f'
+                bleeding: '#d32f2f',
+								postOvulatoryBg: "rgba(33, 150, 243, 0.15)"
             }
         };
         
@@ -134,6 +135,25 @@ export class PaperRenderer {
 				
 				this.ctx.font = "12px sans-serif";
 				this.ctx.fillStyle = this.config.colors.text;
+				
+
+
+				// === Bandeau post-ovulatoire ===
+				if (analysis && analysis.postOvulatoryInfertileStartIndex !== null) {
+						const startIndex = analysis.postOvulatoryInfertileStartIndex;
+						const xStart = this.config.paddingLeft + (startIndex * dayWidth);
+						const yStart = this.config.headerHeight;
+						const height = this.config.gridHeight;
+
+						this.ctx.fillStyle = this.config.colors.postOvulatoryBg;
+						this.ctx.fillRect(
+								xStart,
+								yStart,
+								baseWidth - xStart,
+								height
+						);
+				}
+
 
 				// Dessin des éléments
 				this.drawGrid(daysCount, baseWidth, dayWidth);
