@@ -1,3 +1,21 @@
+/**
+ * Gestionnaire principal de l’interface utilisateur de SensiTrack.
+ *
+ * Responsabilités principales :
+ * - Initialiser l’UI : date/heure, roues de température, onglets, thème, overlay du graphique
+ * - Gérer les interactions utilisateur : saisie température, glaire, saignements, perturbations
+ * - Coordonner la navigation entre cycles et la gestion du tableau des cycles
+ * - Synchroniser l’interface avec les données (DataManager) et l’analyse (CycleComputer)
+ * - Piloter le rendu graphique via PaperRenderer, avec gestion avancée du zoom et du pan
+ * - Assurer la cohérence visuelle : états désactivés, rafraîchissements, transitions
+ *
+ * Ce module constitue la couche de contrôle de l’application :
+ * il relie les données, l’analyse et le rendu visuel pour offrir
+ * une expérience fluide, intuitive et réactive.
+ */
+
+
+
 import { CycleComputer } from './cycleComputer.js';
 import { WheelManager } from './wheelManager.js';
 import { PaperRenderer } from './paperRenderer.js';

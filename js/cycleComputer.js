@@ -1,3 +1,22 @@
+/**
+ * Module d’analyse du cycle selon les règles Sympto / Sensiplan.
+ *
+ * Cette classe fournit :
+ * - La classification du mucus (t, h, G, G+) selon sensation et aspect
+ * - L’attribution d’un poids de fertilité à chaque observation
+ * - L’analyse complète d’un cycle :
+ *      • Détection du jour sommet (Peak Day)
+ *      • Identification des jours de saignement et spotting
+ *      • Calcul de la ligne de base (coverline)
+ *      • Validation du décalage thermique (3 hautes après 6 basses)
+ *      • Détermination du début de la phase infertile post‑ovulatoire
+ *
+ * L’objectif est de fournir une interprétation algorithmique fidèle
+ * aux principes Sensiplan, tout en restant robuste face aux données
+ * incomplètes ou hétérogènes.
+ */
+
+
 export class CycleComputer {
 
     /**

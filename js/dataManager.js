@@ -1,3 +1,21 @@
+/**
+ * Gestionnaire central des données de l’application SensiTrack.
+ *
+ * Responsabilités principales :
+ * - Charger et sauvegarder les données (localStorage + sauvegarde native via File System Access API)
+ * - Gérer la liste des cycles : création, suppression, sélection, mise à jour
+ * - Gérer les entrées quotidiennes : validation, nettoyage, fusion, tri
+ * - Maintenir les paramètres utilisateur (thème, préférences…)
+ * - Assurer la cohérence des données même en cas de cycles vides ou suppression complète
+ *
+ * Ce module sert de couche de persistance et d’orchestration,
+ * garantissant que l’interface et les modules d’analyse disposent
+ * toujours de données propres, cohérentes et à jour.
+ */
+
+
+
+
 export class DataManager {
     constructor() {
         this.STORAGE_KEY = 'sensitrack_v2';

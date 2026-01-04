@@ -1,3 +1,20 @@
+/**
+ * Moteur de rendu graphique du cycle sur canvas.
+ *
+ * Responsabilités principales :
+ * - Générer une représentation “papier” du cycle menstruel sur un canvas HTML5
+ * - Dessiner la grille (jours, températures, repères visuels)
+ * - Afficher les données du cycle : températures, glaire (3 lignes), dates, saignements
+ * - Intégrer les résultats d’analyse (coverline, jours hauts, pic)
+ * - Gérer le zoom, l’adaptation à l’orientation et la mise à l’échelle haute résolution (DPR)
+ * - Ajuster automatiquement les couleurs selon le thème clair/sombre
+ *
+ * Ce module constitue la couche de visualisation principale,
+ * transformant les données brutes et l’analyse Sensiplan
+ * en un graphique lisible, précis et ergonomique.
+ */
+
+
 import { CycleComputer } from './cycleComputer.js';
 
 export class PaperRenderer {
