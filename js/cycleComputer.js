@@ -108,7 +108,14 @@ export class CycleComputer {
 				let peakWeight = 0;
 				for (let i = 0; i < entries.length; i++) {
 						const e = entries[i];
-						const code = classify(e.mucusSensation, e.mucusAspect);
+						
+						const hasMucusObservation =
+								('mucusSensation' in e) || ('mucusAspect' in e);
+
+						const code = hasMucusObservation
+								? classify(e.mucusSensation, e.mucusAspect)
+								: '--';
+						
 						const w = weightOf(code);
 						if (w >= 3) {
 								// on prend le dernier jour le plus fertile rencontré (poids >= 3)

@@ -139,6 +139,17 @@ export class PaperRenderer {
 
         this.ctx.font = "12px sans-serif";
         this.ctx.fillStyle = this.config.colors.text;
+				
+				
+				// === Bandeau début de cycle (jours initiaux infertiles) ===
+				const xStart0 = this.config.paddingLeft;
+				const xWidth0 = 5 * dayWidth; // colorer jusqu'au début du jour 5
+				const yStart0 = this.config.headerHeight;
+				const height0 = this.config.gridHeight;
+				this.ctx.fillStyle = this.config.colors.postOvulatoryBg; // même couleur
+				this.ctx.fillRect(xStart0, yStart0, xWidth0, height0);
+
+
 
         // === Bandeau post-ovulatoire ===
         if (analysis && analysis.postOvulatoryInfertileStartIndex !== null) {
@@ -240,6 +251,7 @@ export class PaperRenderer {
             // DATE
             const d = new Date(e.date);
             const dateStr = `${d.getDate()}/${d.getMonth() + 1}`;
+						
             ctx.save();
             ctx.font = "11px sans-serif";
             ctx.fillStyle = config.colors.text;
@@ -252,8 +264,28 @@ export class PaperRenderer {
             const yGlaire3 = config.headerHeight - 5;
 
             ctx.save();
-            ctx.font = "10px sans-serif";
+            ctx.font = "14px sans-serif";
             ctx.fillStyle = config.colors.text;
+						
+						// --- Afficher icône de perturbation si nécessaire (au-dessus des glaire emojis)
+						if (e.excludeTemp || (e.perturbations && Object.values(e.perturbations).some(v => v))) {
+								// choisir une icône prioritaire selon perturbation
+								let pertIcon = "🚫"; // défaut
+								if (e.perturbations) {
+										if (e.perturbations['p-sleep']) pertIcon = "💤";
+										else if (e.perturbations['p-alcohol']) pertIcon = "🍷";
+										else if (e.perturbations['p-illness']) pertIcon = "🤒";
+										else if (e.perturbations['p-stress']) pertIcon = "⚡";
+										else if (e.perturbations['p-late']) pertIcon = "⏰";
+								} else if (e.excludeTemp) {
+										pertIcon = "🚫";
+								}
+
+								// positionner au-dessus des glaire emojis
+								ctx.font = "14px sans-serif";
+								ctx.fillStyle = config.colors.text;
+								ctx.fillText(pertIcon, xCenter - 8, yGlaire1 - 18); // 18px au-dessus de la 1ère ligne
+						}
 
             // Ligne 1 : SENSATION
             if (e.mucusSensation && e.mucusSensation !== 'none' && e.mucusSensation !== 'rien') {
@@ -449,7 +481,7 @@ export class PaperRenderer {
     drawPeakDayMarker(peakDayIndex, dayWidth) {
         const { ctx, config } = this;
         const x = config.paddingLeft + (peakDayIndex * dayWidth) + (dayWidth / 2);
-        const yTop = 0;
+        const yTop = config.headerHeight;
         const yBottom = config.headerHeight + config.gridHeight;
 
         ctx.save();
@@ -461,14 +493,6 @@ export class PaperRenderer {
         ctx.lineTo(x, yBottom);
         ctx.stroke();
         ctx.setLineDash([]);
-        ctx.restore();
-
-        // Diamond marker at top
-        ctx.save();
-        ctx.fillStyle = config.colors.peak;
-        ctx.translate(x, config.headerHeight - 10);
-        ctx.rotate(Math.PI / 4);
-        ctx.fillRect(-6, -6, 12, 12);
         ctx.restore();
     }
 

@@ -97,17 +97,17 @@ export class UIManager {
         const sensation = document.querySelector('input[name="mucus-sensation"]:checked')?.value;
         const aspect = document.querySelector('input[name="mucus-aspect"]:checked')?.value;
 
-        const entryData = {
-            date: this.dom.date.value
-        };
-
         if (bleeding && bleeding !== 'none') {
             entryData.bleeding = bleeding;
             entryData.mucusSensation = null;
             entryData.mucusAspect = null;
         } else {
-            if (sensation) entryData.mucusSensation = sensation;
-            if (aspect) entryData.mucusAspect = aspect;
+						if (typeof sensation !== 'undefined') {
+							entryData.mucusSensation = sensation;
+						}
+						if (typeof aspect !== 'undefined') {
+							entryData.mucusAspect = aspect;
+						}
             entryData.bleeding = 'none';
         }
 
