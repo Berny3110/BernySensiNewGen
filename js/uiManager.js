@@ -93,6 +93,9 @@ export class UIManager {
     }
     
     validateMucus() {
+			
+				const entryData = { date: this.dom.date.value };
+			
         const bleeding = document.querySelector('input[name="bleeding"]:checked')?.value || 'none';
         const sensation = document.querySelector('input[name="mucus-sensation"]:checked')?.value;
         const aspect = document.querySelector('input[name="mucus-aspect"]:checked')?.value;
