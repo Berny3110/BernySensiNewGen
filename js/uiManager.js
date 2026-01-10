@@ -132,6 +132,7 @@ export class UIManager {
     setCurrentDateTime() {
         const now = new Date();
         const dateStr = now.toISOString().split('T')[0];
+				this.dom.date.value = "";
         this.dom.date.value = dateStr;
         
         const hours = String(now.getHours()).padStart(2, '0');
