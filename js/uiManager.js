@@ -32,7 +32,7 @@ export class UIManager {
     init() {
         this.paperChart = new PaperRenderer('paperChartCanvas');
         this.cacheDOM();
-        this.setCurrentDateTime();
+        setTimeout(() => this.setCurrentDateTime(), 80);
         this.initWheels();
         this.initTabs();
         this.initInputs();
@@ -129,16 +129,26 @@ export class UIManager {
         }
     }
 
-    setCurrentDateTime() {
-        const now = new Date();
-        const dateStr = now.toISOString().split('T')[0];
+		setCurrentDateTime() {
+				const now = new Date();
+
+				// Format universel compatible tous smartphones
+				const dateStr = [
+						now.getFullYear(),
+						String(now.getMonth() + 1).padStart(2, '0'),
+						String(now.getDate()).padStart(2, '0')
+				].join('-');
+
+				// Patch universel : reset + écriture
 				this.dom.date.value = "";
-        this.dom.date.value = dateStr;
-        
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        this.dom.time.value = `${hours}:${minutes}`;
-    }
+				this.dom.date.value = dateStr;
+
+				// Heure (tu peux garder ton code)
+				const hours = String(now.getHours()).padStart(2, '0');
+				const minutes = String(now.getMinutes()).padStart(2, '0');
+				this.dom.time.value = `${hours}:${minutes}`;
+		}
+
 
     initWheels() {
         const updateDisplay = () => {
