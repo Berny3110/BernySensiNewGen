@@ -249,14 +249,19 @@ export class PaperRenderer {
             const xCenter = config.paddingLeft + ((cycleDay - 1) * dayWidth) + (dayWidth / 2);
 
             // DATE
-            const d = new Date(e.date);
-            const dateStr = `\( {d.getDate()}/ \){d.getMonth() + 1}`;
-						
-            ctx.save();
-            ctx.font = "11px sans-serif";
-            ctx.fillStyle = config.colors.text;
-            ctx.fillText(dateStr, xCenter - 14, config.headerHeight + config.gridHeight + 50);
-            ctx.restore();
+						// DATE - bloc propre et centré
+						const d = new Date(e.date);
+						const jour = d.getDate();
+						const mois = d.getMonth() + 1;
+						const dateStr = `${jour}/${mois}`;  // Simple, sans aucun risque
+
+						ctx.save();
+						ctx.font = "11px sans-serif";
+						ctx.fillStyle = config.colors.text;
+						ctx.textAlign = 'center';           // Centre parfaitement sous le point
+						ctx.textBaseline = 'top';
+						ctx.fillText(dateStr, xCenter, config.headerHeight + config.gridHeight + 35);  // Ajuste 35 si trop haut/bas
+						ctx.restore();
 
             // GLAIRE SUR 3 LIGNES
             const yGlaire1 = config.headerHeight - 35;
