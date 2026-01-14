@@ -250,7 +250,7 @@ export class PaperRenderer {
 
             // DATE
             const d = new Date(e.date);
-            const dateStr = `${d.getDate()}/${d.getMonth() + 1}`;
+            const dateStr = `\( {d.getDate()}/ \){d.getMonth() + 1}`;
 						
             ctx.save();
             ctx.font = "11px sans-serif";
@@ -380,7 +380,14 @@ export class PaperRenderer {
                 ctx.fill();
 
                 // If this is the confirmed tempShift index, draw a filled triangle above the point
-                if (analysis && analysis.retreatIndices && analysis.retreatIndices.includes(entryIndex)) { this.drawEmptyTriangle(xCenter, y - 12, 10, this.config.colors.excludedTriangle); }
+                if (analysis && analysis.retreatIndices && analysis.retreatIndices.includes(entryIndex)) { 
+                    this.drawEmptyTriangle(xCenter, y - 12, 10, this.config.colors.excludedTriangle); 
+                }
+
+                // Optionnel : Triangle plein pour la température confirmant le shift (3e/4e haute)
+                if (analysis && analysis.confirmedShiftIndex === entryIndex) {
+                    this.drawFilledTriangle(xCenter, y - 12, 10, this.config.colors.confirmTriangle);
+                }
 
                 prevPoint = { x: xCenter, y: y };
                 prevCycleDay = cycleDay;
@@ -390,11 +397,17 @@ export class PaperRenderer {
                 prevCycleDay = null;
 
                 if (e.excludeTemp && e.temp) {
-                    // Draw an empty triangle to mark excluded temperature
+                    // Draw the point (in gray) with "X" on top, no triangle
                     const y = this.getYForTemp(e.temp || 36.5);
-                    this.drawEmptyTriangle(xCenter, y - 12, 10, this.config.colors.excludedTriangle);
+                    ctx.beginPath();
+                    ctx.fillStyle = '#9e9e9e'; // Gris pour distinguer l'exclusion manuelle
+                    ctx.arc(xCenter, y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // "X" par-dessus le point
                     ctx.fillStyle = config.colors.text;
-                    ctx.fillText("X", xCenter - 4, this.getYForTemp(e.temp || 36.5));
+                    ctx.font = "bold 12px sans-serif"; // Plus visible
+                    ctx.fillText("X", xCenter - 6, y + 4); // Centré sur le point
                 }
             }
         });
