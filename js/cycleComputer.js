@@ -69,13 +69,10 @@ export class CycleComputer {
     }
 
 		static analyzeCycle(cycle, options = { allowTempOnly: false }) {
-				// Analyse complète d'un cycle selon règles Sensiplan (version stricte par défaut)
-				// options.allowTempOnly : si true, autorise la validation par température seule (cas rare)
 				if (!cycle || !Array.isArray(cycle.entries) || cycle.entries.length === 0) {
 						return null;
 				}
 
-				// Clone et tri des entrées par date croissante
 				const entries = [...cycle.entries].sort((a, b) => new Date(a.date) - new Date(b.date));
 
 				const analysis = {
@@ -85,16 +82,15 @@ export class CycleComputer {
 						highTempIndices: [],
 						bleedingDays: [],
 						spottingDays: [],
-						retreatIndices: [],
+						retreatIndices: [],  // Sera rempli seulement si shift confirmé
 						postOvulatoryInfertileStartIndex: null
 				};
 
-				// Helpers
 				const classify = (sensation, aspect) => CycleComputer.classifyMucus(sensation, aspect);
 				const weightOf = (code) => CycleComputer.getMucusWeight(code);
 				const isValidTemp = (entry) => entry && typeof entry.temp === 'number' && !entry.excludeTemp;
 
-				// --- 1. Repérage saignements / spotting
+				// 1. Saignements / spotting (inchangé)
 				entries.forEach((e, idx) => {
 						if (e.bleeding) {
 								if (e.bleeding === 'spotting') analysis.spottingDays.push(idx);
@@ -158,100 +154,92 @@ export class CycleComputer {
 						if (confirmed) analysis.peakDayIndex = potentialPeak;
 				}
 
-				// --- 3. Détection de la montée thermique (règle 6 basses / 3 hautes + exceptions)
-				// On parcourt les fenêtres possibles : pour chaque index i >= 6 on considère les 6 précédents
-				for (let i = 6; i < entries.length; i++) {
-						// Récupérer jusqu'à 6 températures valides précédentes
-						const lowTemps = [];
-						const lowIndices = [];
-						for (let k = 1; k <= 6; k++) {
-								const prev = entries[i - k];
-								if (prev && isValidTemp(prev)) {
-										lowTemps.push(prev.temp);
-										lowIndices.push(i - k);
-								}
+		// 3. Montée thermique – version corrigée et complète
+		let shiftConfirmed = false;
+		for (let i = 6; i < entries.length && !shiftConfirmed; i++) {
+				const lowTemps = [];
+				const lowIndices = [];
+				for (let k = 1; k <= 6; k++) {
+						const prev = entries[i - k];
+						if (prev && isValidTemp(prev)) {
+								lowTemps.push(prev.temp);
+								lowIndices.push(i - k);
 						}
-						// Besoin d'au moins 4 basses valides parmi les 6
-						if (lowTemps.length < 4) continue;
+				}
+				if (lowTemps.length < 4) continue;
 
-						const maxLow = Math.max(...lowTemps);
+				const maxLow = Math.max(...lowTemps);
+				const highs = [];
+				let exception2Used = false;
+				let consecutiveLows = 0;
+				let j = i;
+				const tempRetreats = [];  // Temporaire pour cette fenêtre
 
-						// Parcours pour collecter hautes en respectant au plus une retombée (exception 2)
-						const highs = [];
-						let exception2Used = false;
-						let consecutiveLows = 0;
-						let j = i; // on commence à i (inclut le jour i)
-						while (j < entries.length && highs.length < 3) {
-								const cur = entries[j];
-								if (!isValidTemp(cur)) { j++; continue; }
+				while (j < entries.length && highs.length < 3) {
+						const cur = entries[j];
+						if (!isValidTemp(cur)) { j++; continue; }
 
-								if (cur.temp > maxLow) {
-										highs.push(j);
-										consecutiveLows = 0;
+						if (cur.temp > maxLow) {
+								highs.push(j);
+								consecutiveLows = 0;
+						} else {
+								consecutiveLows++;
+								if (consecutiveLows === 1 && !exception2Used) {
+										exception2Used = true;
+										tempRetreats.push(j);
 								} else {
-										// retombée candidate
-										consecutiveLows++;
-										if (consecutiveLows === 1) {
-												// on peut ignorer une seule retombée (exception 2)
-												exception2Used = true;
-												analysis.retreatIndices.push(j);
-												// on continue sans ajouter d'indice
-										} else {
-												// deuxième retombée consécutive -> fenêtre invalide
-												break;
-										}
+										break;  // Deuxième basse consécutive → invalide
 								}
-								j++;
+						}
+						j++;
+				}
+
+				if (highs.length >= 3) {
+						const thirdHighTemp = entries[highs[2]].temp;
+
+						// Règle standard : 3ème haute >= maxLow + 0.2
+						if (thirdHighTemp >= maxLow + 0.2) {
+								analysis.coverLine = maxLow;
+								analysis.highTempIndices = highs.slice(0, 3);
+								analysis.tempShiftConfirmedIndex = highs[2];
+								analysis.retreatIndices.push(...tempRetreats);
+								shiftConfirmed = true;
+								continue;  // Pas besoin d'aller plus loin
 						}
 
-						if (highs.length >= 3) {
-								const thirdHighTemp = entries[highs[2]].temp;
+						// Exception 1 : 4ème haute si la 3ème n'atteint pas +0.2°C et pas d'exception 2 utilisée
+						if (!exception2Used) {
+								let k = highs[2] + 1;
+								let foundFourth = null;
+								let interveningLow = false;
 
-								// Règle standard : 3ème haute >= maxLow + 0.2
-								if (thirdHighTemp >= maxLow + 0.2) {
-										analysis.coverLine = maxLow;
-										analysis.highTempIndices = highs.slice(0, 3);
-										analysis.tempShiftConfirmedIndex = highs[2];
-										// on ne fixe pas encore postOvulatoryInfertileStartIndex ici (voir section finale)
-										break;
-								}
+								while (k < entries.length) {
+										const cur = entries[k];
+										if (!isValidTemp(cur)) { k++; continue; }
 
-								// Exception 1 : chercher une 4ème haute >= maxLow + 0.2 si exception2 n'a pas été utilisée
-								if (!exception2Used) {
-										let k = highs[2] + 1;
-										let foundFourth = null;
-										let interveningLow = false;
-										while (k < entries.length) {
-												const cur = entries[k];
-												if (!isValidTemp(cur)) { k++; continue; }
-												if (cur.temp > maxLow) {
-														if (cur.temp >= maxLow + 0.2) {
-																foundFourth = k;
-																break;
-														} else {
-																k++;
-																continue;
-														}
-												} else {
-														// retombée après la 3ème haute -> exception1 échoue
-														interveningLow = true;
+										if (cur.temp > maxLow) {
+												if (cur.temp >= maxLow + 0.2) {
+														foundFourth = k;
 														break;
 												}
-										}
-										if (foundFourth !== null && !interveningLow) {
-												analysis.coverLine = maxLow;
-												analysis.highTempIndices = highs.slice(0, 3);
-												analysis.tempShiftConfirmedIndex = foundFourth;
+												// Si juste > maxLow mais < +0.2, on continue (pas une vraie 4e validante)
+												k++;
+										} else {
+												interveningLow = true;
 												break;
 										}
 								}
 
-								// Sinon, cette fenêtre ne valide pas la montée ; continuer la boucle principale
-								continue;
+								if (foundFourth !== null && !interveningLow) {
+										analysis.coverLine = maxLow;
+										analysis.highTempIndices = highs.slice(0, 3);
+										analysis.tempShiftConfirmedIndex = foundFourth;
+										analysis.retreatIndices.push(...tempRetreats);
+										shiftConfirmed = true;
+								}
 						}
-
-						// pas assez de hautes -> continuer
 				}
+		}
 
 				// --- 4. Début infertile post‑ovulatoire (Sensiplan strict) ---
 				// On calcule des candidats exprimés en "startIndex" utilisable par le renderer,
