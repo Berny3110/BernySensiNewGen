@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v2'; // change juste ce numéro quand tu veux forcer une mise à jour
+const CACHE_VERSION = 'v3'; // Incrémenté pour forcer le rechargement du cache
 const CACHE_NAME = `sensitrack-cache-${CACHE_VERSION}`;
 
 const ASSETS = [
@@ -9,7 +9,8 @@ const ASSETS = [
   './js/uiManager.js',
   './js/dataManager.js',
   './js/cycleComputer.js',
-  './js/chartRenderer.js'
+  './js/paperRenderer.js',
+  './js/wheelManager.js'
 ];
 
 self.addEventListener('install', event => {
@@ -27,5 +28,11 @@ self.addEventListener('activate', event => {
           .map(key => caches.delete(key))
       )
     )
+  );
+});
+
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.match(event.request).then(cached => cached || fetch(event.request))
   );
 });

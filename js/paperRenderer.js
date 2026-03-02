@@ -1,17 +1,14 @@
 /**
- * Moteur de rendu graphique du cycle sur canvas.
+ * Moteur de rendu graphique du cycle sur canvas — Version 2.
  *
- * Responsabilités principales :
- * - Générer une représentation “papier” du cycle menstruel sur un canvas HTML5
- * - Dessiner la grille (jours, températures, repères visuels)
- * - Afficher les données du cycle : températures, glaire (3 lignes), dates, saignements
- * - Intégrer les résultats d’analyse (coverline, jours hauts, pic)
- * - Gérer le zoom, l’adaptation à l’orientation et la mise à l’échelle haute résolution (DPR)
- * - Ajuster automatiquement les couleurs selon le thème clair/sombre
- *
- * Ce module constitue la couche de visualisation principale,
- * transformant les données brutes et l’analyse Sensiplan
- * en un graphique lisible, précis et ergonomique.
+ * Nouveautés :
+ * - Colonnes colorées : jours 1-5 (bleu), ovulation (rouge), J+1 à J+3 (rose), phase infertile (bleu)
+ * - Ligne de référence bleue horizontale (coverline)
+ * - Numéros 1-6 sous les températures de référence
+ * - Triangles sur les 3 températures hautes confirmées
+ * - Rectangle hachuré entre la coverline et la coverline+0.2
+ * - Symbole ∅ pour les observations "rien" de glaire
+ * - Zoom bidirectionnel (axes X et Y)
  */
 
 import { CycleComputer } from './cycleComputer.js';
@@ -22,29 +19,33 @@ export class PaperRenderer {
         this.ctx = this.canvas.getContext('2d');
 
         this.config = {
-            dayWidth: 30,
-            headerHeight: 60,
-            footerHeight: 100,
+            dayWidth: 32,
+            headerHeight: 70,
+            footerHeight: 110,
             tempMin: 36.0,
             tempMax: 37.0,
             gridHeight: 300,
-            paddingLeft: 40,
+            paddingLeft: 44,
             colors: {
                 grid: '#e0e0e0',
                 gridStrong: '#9e9e9e',
                 tempLine: '#2962ff',
                 tempDot: '#000000',
                 text: '#333333',
-                coverLine: '#00bfa5',
-                peak: '#ff4081',
+                coverLine: '#2196f3',       // Bleu pour coverline
+                peak: '#e91e63',            // Rose pour pic de glaire
                 bleeding: '#d32f2f',
-                postOvulatoryBg: "rgba(33, 150, 243, 0.15)",
+                // Phases
+                bgFirstDays: 'rgba(33, 150, 243, 0.13)',    // Bleu jours 1-5
+                bgOvulation: 'rgba(211, 47, 47, 0.25)',      // Rouge ovulation
+                bgPostOv1_3: 'rgba(233, 30, 99, 0.13)',      // Rose J+1 à J+3
+                bgInfertile: 'rgba(33, 150, 243, 0.13)',     // Bleu phase infertile
+                // Températures
                 highTempFill: '#ff5722',
-                highTempStripBg: 'rgba(255,87,34,0.12)',
-                highTempStripLine: 'rgba(255,87,34,0.6)',
-                excludedTriangle: '#9e9e9e',
-                confirmTriangle: '#ff4081',
-                lowCircleStroke: '#2196f3'
+                hatchBg: 'rgba(255, 87, 34, 0.10)',
+                hatchLine: 'rgba(255, 87, 34, 0.55)',
+                retreatStroke: '#9e9e9e',
+                refTempNumber: '#1565c0',   // Bleu foncé pour les chiffres 1-6
             }
         };
 
@@ -52,28 +53,30 @@ export class PaperRenderer {
     }
 
     roundTempForDisplay(temp) {
+        // Arrondi au demi-dixième (0.05°C)
         return Math.round(temp * 20) / 20;
     }
 
-    // Calcule le jour de cycle (1, 2, 3...) pour une date donnée
     getCycleDay(entryDate, cycleStartDate) {
         const start = new Date(cycleStartDate);
         const entry = new Date(entryDate);
-        const diffTime = entry - start;
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays + 1; // Jour 1 = premier jour du cycle
+        const diffDays = Math.floor((entry - start) / (1000 * 60 * 60 * 24));
+        return diffDays + 1;
     }
 
     updateThemeColors() {
         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-
         if (isDark) {
             this.config.colors.background = '#2a2a2a';
-            this.config.colors.grid = '#4a4a4a';
-            this.config.colors.gridStrong = '#666666';
+            this.config.colors.grid = '#3a3a3a';
+            this.config.colors.gridStrong = '#555555';
             this.config.colors.text = '#e0e0e0';
             this.config.colors.tempLine = '#64b5f6';
             this.config.colors.tempDot = '#ffffff';
+            this.config.colors.bgFirstDays = 'rgba(33, 150, 243, 0.18)';
+            this.config.colors.bgOvulation = 'rgba(211, 47, 47, 0.35)';
+            this.config.colors.bgPostOv1_3 = 'rgba(233, 30, 99, 0.20)';
+            this.config.colors.bgInfertile = 'rgba(33, 150, 243, 0.18)';
         } else {
             this.config.colors.background = '#ffffff';
             this.config.colors.grid = '#e0e0e0';
@@ -81,9 +84,29 @@ export class PaperRenderer {
             this.config.colors.text = '#333333';
             this.config.colors.tempLine = '#2962ff';
             this.config.colors.tempDot = '#000000';
+            this.config.colors.bgFirstDays = 'rgba(33, 150, 243, 0.13)';
+            this.config.colors.bgOvulation = 'rgba(211, 47, 47, 0.25)';
+            this.config.colors.bgPostOv1_3 = 'rgba(233, 30, 99, 0.13)';
+            this.config.colors.bgInfertile = 'rgba(33, 150, 243, 0.13)';
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    //  Conversion température → coordonnée Y
+    // ─────────────────────────────────────────────────────────────────────────
+    getYForTemp(temp, gridHeight) {
+        gridHeight = gridHeight ?? this._gridHeight ?? this.config.gridHeight;
+        temp = this.roundTempForDisplay(temp);
+        if (temp > this.config.tempMax) temp = this.config.tempMax;
+        if (temp < this.config.tempMin) temp = this.config.tempMin;
+        const range = this.config.tempMax - this.config.tempMin;
+        const ratio = (this.config.tempMax - temp) / range;
+        return this.config.headerHeight + (ratio * gridHeight);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  Rendu principal
+    // ─────────────────────────────────────────────────────────────────────────
     render(cycle, analysis, zoom = 1.0) {
         if (!cycle || !cycle.entries) return;
 
@@ -91,142 +114,142 @@ export class PaperRenderer {
 
         const entries = [...cycle.entries].sort((a, b) => new Date(a.date) - new Date(b.date));
 
-        // Calculer le dernier jour de cycle
-        let maxCycleDay = 40; // Minimum par défaut
+        // Nombre de jours à afficher
+        let maxCycleDay = 40;
         if (entries.length > 0) {
-            const lastEntry = entries[entries.length - 1];
-            const lastCycleDay = this.getCycleDay(lastEntry.date, cycle.startDate);
+            const lastCycleDay = this.getCycleDay(entries[entries.length - 1].date, cycle.startDate);
             maxCycleDay = Math.max(maxCycleDay, lastCycleDay + 5);
         }
 
-        // Calculs de dimensions avec ZOOM
-        const daysCount = maxCycleDay;
+        // Dimensions avec zoom bidirectionnel (X et Y)
         const dayWidth = this.config.dayWidth * zoom;
-        const baseWidth = this.config.paddingLeft + (daysCount * dayWidth);
-        const baseHeight = this.config.headerHeight + this.config.gridHeight + this.config.footerHeight;
+        const gridHeight = this.config.gridHeight * zoom;
+        this._gridHeight = gridHeight;
 
-        // Détection de l'orientation et calcul des dimensions
-        const container = this.canvas.parentElement;
-        const containerWidth = container?.clientWidth || window.innerWidth;
-        const containerHeight = container?.clientHeight || window.innerHeight;
-
-        let canvasWidth = baseWidth;
-        let canvasHeight = baseHeight;
-
-        // S'adapter au conteneur disponible
-        const isLandscape = window.innerWidth > window.innerHeight;
-        if (isLandscape) {
-            canvasHeight = Math.min(containerHeight, baseHeight);
-        }
-
-        canvasWidth = Math.min(baseWidth, containerWidth * 3);
+        const { headerHeight, footerHeight, paddingLeft } = this.config;
+        const baseWidth = paddingLeft + maxCycleDay * dayWidth;
+        const baseHeight = headerHeight + gridHeight + footerHeight;
 
         const dpr = window.devicePixelRatio || 1;
-        this.canvas.width = canvasWidth * dpr;
-        this.canvas.height = canvasHeight * dpr;
-        this.canvas.style.width = `${canvasWidth}px`;
-        this.canvas.style.height = `${canvasHeight}px`;
-
-        const scaleX = canvasWidth / baseWidth;
-        const scaleY = canvasHeight / baseHeight;
+        this.canvas.width = Math.round(baseWidth * dpr);
+        this.canvas.height = Math.round(baseHeight * dpr);
+        this.canvas.style.width = `${baseWidth}px`;
+        this.canvas.style.height = `${baseHeight}px`;
 
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-        this.ctx.scale(dpr * scaleX, dpr * scaleY);
+        this.ctx.scale(dpr, dpr);
 
-        // Fond
+        // Fond général
         this.ctx.fillStyle = this.config.colors.background;
         this.ctx.fillRect(0, 0, baseWidth, baseHeight);
 
-        this.ctx.font = "12px sans-serif";
-        this.ctx.fillStyle = this.config.colors.text;
-				
-				
-				// === Bandeau début de cycle (jours initiaux infertiles) ===
-				const xStart0 = this.config.paddingLeft;
-				const xWidth0 = 5 * dayWidth; // colorer jusqu'au début du jour 5
-				const yStart0 = this.config.headerHeight;
-				const height0 = this.config.gridHeight;
-				this.ctx.fillStyle = this.config.colors.postOvulatoryBg; // même couleur
-				this.ctx.fillRect(xStart0, yStart0, xWidth0, height0);
+        // Étape 1 : Bandes de fond (colonnes colorées)
+        this.drawBackgroundBands(maxCycleDay, dayWidth, gridHeight, analysis, entries, cycle);
 
+        // Étape 2 : Grille
+        this.drawGrid(maxCycleDay, baseWidth, dayWidth, gridHeight);
 
+        // Étape 3 : Données (températures, mucus, marqueurs)
+        this.drawData(cycle, analysis, entries, dayWidth, gridHeight, baseWidth);
 
-        // === Bandeau post-ovulatoire ===
-        if (analysis && analysis.postOvulatoryInfertileStartIndex !== null) {
-            const startIndex = analysis.postOvulatoryInfertileStartIndex;
-            const xStart = this.config.paddingLeft + (startIndex * dayWidth);
-            const yStart = this.config.headerHeight;
-            const height = this.config.gridHeight;
+        // Étape 4 : Saignements
+        this.drawBleeding(cycle, entries, dayWidth, gridHeight);
+    }
 
-            this.ctx.fillStyle = this.config.colors.postOvulatoryBg;
-            this.ctx.fillRect(
-                xStart,
-                yStart,
-                baseWidth - xStart,
-                height
-            );
+    // ─────────────────────────────────────────────────────────────────────────
+    //  Bandes de fond colorées par colonne/jour de cycle
+    // ─────────────────────────────────────────────────────────────────────────
+    drawBackgroundBands(daysCount, dayWidth, gridHeight, analysis, entries, cycle) {
+        const { ctx, config } = this;
+        const yTop = config.headerHeight;
+
+        // Trouver le jour de cycle de l'ovulation
+        let ovulationCycleDay = null;
+        if (analysis && analysis.ovulationDayIndex !== null && analysis.ovulationDayIndex !== undefined) {
+            const ovulEntry = entries[analysis.ovulationDayIndex];
+            if (ovulEntry) {
+                ovulationCycleDay = this.getCycleDay(ovulEntry.date, cycle.startDate);
+            }
         }
 
-        // Dessin des éléments
-        this.drawGrid(daysCount, baseWidth, dayWidth);
-        this.drawData(cycle, analysis, entries, dayWidth);
-        this.drawBleeding(cycle, entries, dayWidth);
+        for (let day = 1; day <= daysCount; day++) {
+            const xLeft = config.paddingLeft + (day - 1) * dayWidth;
+
+            let color = null;
+
+            if (day <= 5) {
+                // Jours 1-5 : bleu (phase potentiellement infertile début de cycle)
+                color = config.colors.bgFirstDays;
+            } else if (ovulationCycleDay !== null) {
+                if (day === ovulationCycleDay) {
+                    // Jour d'ovulation : rouge
+                    color = config.colors.bgOvulation;
+                } else if (day > ovulationCycleDay && day <= ovulationCycleDay + 3) {
+                    // J+1 à J+3 : rose
+                    color = config.colors.bgPostOv1_3;
+                } else if (day > ovulationCycleDay + 3) {
+                    // Phase infertile post-ovulatoire : bleu
+                    color = config.colors.bgInfertile;
+                }
+                // Entre jour 5 et ovulation : fond blanc (phase fertile, pas de couleur)
+            }
+
+            if (color) {
+                ctx.fillStyle = color;
+                ctx.fillRect(xLeft, yTop, dayWidth, gridHeight);
+            }
+        }
     }
 
-    getYForTemp(temp) {
-        temp = this.roundTempForDisplay(temp);
-
-        if (temp > this.config.tempMax) temp = this.config.tempMax;
-        if (temp < this.config.tempMin) temp = this.config.tempMin;
-
-        const range = this.config.tempMax - this.config.tempMin;
-        const ratio = (this.config.tempMax - temp) / range;
-        return this.config.headerHeight + (ratio * this.config.gridHeight);
-    }
-
-    drawGrid(daysCount, totalWidth, dayWidth) {
+    // ─────────────────────────────────────────────────────────────────────────
+    //  Grille
+    // ─────────────────────────────────────────────────────────────────────────
+    drawGrid(daysCount, totalWidth, dayWidth, gridHeight) {
         const { ctx, config } = this;
-        const bottomY = config.headerHeight + config.gridHeight;
-
-        ctx.beginPath();
-        ctx.lineWidth = 1;
+        const bottomY = config.headerHeight + gridHeight;
 
         // Grille horizontale (températures)
         for (let t = config.tempMin * 10; t <= config.tempMax * 10; t++) {
             const temp = t / 10;
-            const y = this.getYForTemp(temp);
+            const y = this.getYForTemp(temp, gridHeight);
             const isMain = (t % 5 === 0);
             ctx.strokeStyle = isMain ? config.colors.gridStrong : config.colors.grid;
-
+            ctx.lineWidth = isMain ? 1.5 : 0.7;
+            ctx.beginPath();
             ctx.moveTo(config.paddingLeft, y);
             ctx.lineTo(totalWidth, y);
             ctx.stroke();
-            ctx.beginPath();
 
             if (isMain) {
                 ctx.fillStyle = config.colors.text;
-                ctx.fillText(temp.toFixed(1), 5, y + 4);
+                ctx.font = '11px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(temp.toFixed(1), config.paddingLeft - 4, y + 4);
             }
         }
 
         // Grille verticale (jours)
-        ctx.strokeStyle = config.colors.grid;
         for (let i = 0; i <= daysCount; i++) {
-            const x = config.paddingLeft + (i * dayWidth);
+            const x = config.paddingLeft + i * dayWidth;
+            ctx.strokeStyle = config.colors.grid;
+            ctx.lineWidth = 0.7;
+            ctx.beginPath();
             ctx.moveTo(x, 0);
             ctx.lineTo(x, bottomY + config.footerHeight);
             ctx.stroke();
-            ctx.beginPath();
 
-            if (i > 0 && i <= daysCount) {
+            if (i > 0) {
                 ctx.fillStyle = config.colors.text;
-                ctx.fillText(i, x - (dayWidth / 2) - 4, bottomY + 20);
+                ctx.font = '11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(i, config.paddingLeft + (i - 1) * dayWidth + dayWidth / 2, bottomY + 20);
             }
         }
 
         // Bordures principales
         ctx.strokeStyle = config.colors.gridStrong;
         ctx.lineWidth = 2;
+        ctx.beginPath();
         ctx.moveTo(0, config.headerHeight);
         ctx.lineTo(totalWidth, config.headerHeight);
         ctx.moveTo(0, bottomY);
@@ -234,312 +257,362 @@ export class PaperRenderer {
         ctx.stroke();
     }
 
-    drawData(cycle, analysis, entries, dayWidth) {
+    // ─────────────────────────────────────────────────────────────────────────
+    //  Données principales : mucus, température, marqueurs d'analyse
+    // ─────────────────────────────────────────────────────────────────────────
+    drawData(cycle, analysis, entries, dayWidth, gridHeight, totalWidth) {
         const { ctx, config } = this;
 
+        // ── Coverline (ligne de référence bleue) ──────────────────────────────
+        if (analysis && analysis.coverLine !== null && analysis.coverLine !== undefined) {
+            const yCover = this.getYForTemp(analysis.coverLine, gridHeight);
+            ctx.save();
+            ctx.strokeStyle = config.colors.coverLine;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 4]);
+            ctx.beginPath();
+            ctx.moveTo(config.paddingLeft, yCover);
+            ctx.lineTo(totalWidth, yCover);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
+
+        // ── Rectangles hachurés pour les colonnes des hautes températures ────
+        if (analysis && analysis.highTempIndices && analysis.highTempIndices.length > 0 &&
+            analysis.coverLine !== null) {
+            const yRefBottom = this.getYForTemp(analysis.coverLine, gridHeight);
+            const yRefTop = this.getYForTemp(analysis.coverLine + 0.2, gridHeight);
+            const hatchHeight = yRefBottom - yRefTop;
+
+            analysis.highTempIndices.forEach(entryIdx => {
+                const e = entries[entryIdx];
+                if (!e) return;
+                const cycleDay = this.getCycleDay(e.date, cycle.startDate);
+                const xLeft = config.paddingLeft + (cycleDay - 1) * dayWidth;
+                this.drawHatchedRect(xLeft, yRefTop, dayWidth, hatchHeight);
+            });
+
+            // Aussi pour la 4ème haute (exception 1) si elle existe
+            if (analysis.exception1Used && analysis.tempShiftConfirmedIndex !== null) {
+                const e = entries[analysis.tempShiftConfirmedIndex];
+                if (e && !analysis.highTempIndices.includes(analysis.tempShiftConfirmedIndex)) {
+                    const cycleDay = this.getCycleDay(e.date, cycle.startDate);
+                    const xLeft = config.paddingLeft + (cycleDay - 1) * dayWidth;
+                    this.drawHatchedRect(xLeft, yRefTop, dayWidth, hatchHeight);
+                }
+            }
+        }
+
+        // ── Dessin entrée par entrée ──────────────────────────────────────────
         let prevPoint = null;
         let prevCycleDay = null;
 
-        // Precompute index map for quick lookup
-        const indexByDate = {};
-        entries.forEach((e, idx) => { indexByDate[e.date] = idx; });
-
         entries.forEach((e, entryIndex) => {
             const cycleDay = this.getCycleDay(e.date, cycle.startDate);
-            const xCenter = config.paddingLeft + ((cycleDay - 1) * dayWidth) + (dayWidth / 2);
+            const xCenter = config.paddingLeft + (cycleDay - 1) * dayWidth + dayWidth / 2;
 
-            // DATE
-						// DATE - bloc propre et centré
-						const d = new Date(e.date);
-						const jour = d.getDate();
-						const mois = d.getMonth() + 1;
-						const dateStr = `${jour}/${mois}`;  // Simple, sans aucun risque
+            // ── DATE ──────────────────────────────────────────────────────────
+            const d = new Date(e.date);
+            const dateStr = `${d.getDate()}/${d.getMonth() + 1}`;
+            ctx.save();
+            ctx.font = '10px sans-serif';
+            ctx.fillStyle = config.colors.text;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillText(dateStr, xCenter, config.headerHeight + gridHeight + 38);
+            ctx.restore();
 
-						ctx.save();
-						ctx.font = "11px sans-serif";
-						ctx.fillStyle = config.colors.text;
-						ctx.textAlign = 'center';           // Centre parfaitement sous le point
-						ctx.textBaseline = 'top';
-						ctx.fillText(dateStr, xCenter, config.headerHeight + config.gridHeight + 35);  // Ajuste 35 si trop haut/bas
-						ctx.restore();
-
-            // GLAIRE SUR 3 LIGNES
-            const yGlaire1 = config.headerHeight - 35;
-            const yGlaire2 = config.headerHeight - 20;
-            const yGlaire3 = config.headerHeight - 5;
+            // ── MUCUS (3 lignes dans le header) ──────────────────────────────
+            const yGlaire1 = config.headerHeight - 48; // Perturbations
+            const yGlaire2 = config.headerHeight - 32; // Sensation
+            const yGlaire3 = config.headerHeight - 16; // Aspect
+            const yGlaire4 = config.headerHeight - 2;  // Code résultant
 
             ctx.save();
-            ctx.font = "14px sans-serif";
+            ctx.font = '13px sans-serif';
+            ctx.textAlign = 'center';
             ctx.fillStyle = config.colors.text;
-						
-						// --- Afficher icône de perturbation si nécessaire (au-dessus des glaire emojis)
-						if (e.excludeTemp || (e.perturbations && Object.values(e.perturbations).some(v => v))) {
-								// choisir une icône prioritaire selon perturbation
-								let pertIcon = "🚫"; // défaut
-								if (e.perturbations) {
-										if (e.perturbations['p-sleep']) pertIcon = "💤";
-										else if (e.perturbations['p-alcohol']) pertIcon = "🍷";
-										else if (e.perturbations['p-illness']) pertIcon = "🤒";
-										else if (e.perturbations['p-stress']) pertIcon = "⚡";
-										else if (e.perturbations['p-late']) pertIcon = "⏰";
-								} else if (e.excludeTemp) {
-										pertIcon = "🚫";
-								}
 
-								// positionner au-dessus des glaire emojis
-								ctx.font = "14px sans-serif";
-								ctx.fillStyle = config.colors.text;
-								ctx.fillText(pertIcon, xCenter - 8, yGlaire1 - 18); // 18px au-dessus de la 1ère ligne
-						}
-
-            // Ligne 1 : SENSATION
-            if (e.mucusSensation && e.mucusSensation !== 'none' && e.mucusSensation !== 'rien') {
-                let sensationEmoji = "";
-                switch (e.mucusSensation) {
-                    case 'seche': sensationEmoji = "🌵"; break;
-                    case 'humide': sensationEmoji = "💧"; break;
-                    case 'mouillee': sensationEmoji = "💦"; break;
-                    case 'glissante': sensationEmoji = "⛸️"; break;
+            // Icône de perturbation
+            if (e.excludeTemp || (e.perturbations && Object.values(e.perturbations).some(v => v))) {
+                let icon = '🚫';
+                if (e.perturbations) {
+                    if (e.perturbations['p-sleep']) icon = '💤';
+                    else if (e.perturbations['p-alcohol']) icon = '🍷';
+                    else if (e.perturbations['p-illness']) icon = '🤒';
+                    else if (e.perturbations['p-stress']) icon = '⚡';
+                    else if (e.perturbations['p-late']) icon = '⏰';
                 }
-                if (sensationEmoji) {
-                    ctx.fillText(sensationEmoji, xCenter - 6, yGlaire1);
+                ctx.fillText(icon, xCenter, yGlaire1);
+            }
+
+            // Ligne sensation
+            const hasSensationEntry = 'mucusSensation' in e;
+            if (hasSensationEntry) {
+                if (e.mucusSensation === 'rien') {
+                    // ∅ pour "rien observé"
+                    ctx.font = 'bold 13px sans-serif';
+                    ctx.fillStyle = '#888';
+                    ctx.fillText('∅', xCenter, yGlaire2);
+                } else if (e.mucusSensation && e.mucusSensation !== 'none') {
+                    let emoji = '';
+                    switch (e.mucusSensation) {
+                        case 'seche':    emoji = '🌵'; break;
+                        case 'humide':   emoji = '💧'; break;
+                        case 'mouillee': emoji = '💦'; break;
+                        case 'glissante':emoji = '⛸️'; break;
+                    }
+                    ctx.font = '13px sans-serif';
+                    ctx.fillStyle = config.colors.text;
+                    if (emoji) ctx.fillText(emoji, xCenter, yGlaire2);
                 }
             }
 
-            // Ligne 2 : ASPECT
-            if (e.mucusAspect && e.mucusAspect !== 'none' && e.mucusAspect !== 'rien') {
-                let aspectEmoji = "";
-                switch (e.mucusAspect) {
-                    case 'cremeux': aspectEmoji = "🥛"; break;
-                    case 'jaunatre': aspectEmoji = "🟡"; break;
-                    case 'blanc_oeuf': aspectEmoji = "🥚"; break;
-                    case 'filant': aspectEmoji = "🧵"; break;
-                    case 'collant': aspectEmoji = "📎"; break;
-                }
-                if (aspectEmoji) {
-                    ctx.fillText(aspectEmoji, xCenter - 6, yGlaire2);
+            // Ligne aspect
+            const hasAspectEntry = 'mucusAspect' in e;
+            if (hasAspectEntry) {
+                if (e.mucusAspect === 'rien') {
+                    ctx.font = 'bold 13px sans-serif';
+                    ctx.fillStyle = '#888';
+                    ctx.fillText('∅', xCenter, yGlaire3);
+                } else if (e.mucusAspect && e.mucusAspect !== 'none') {
+                    let emoji = '';
+                    switch (e.mucusAspect) {
+                        case 'cremeux':   emoji = '🥛'; break;
+                        case 'jaunatre':  emoji = '🟡'; break;
+                        case 'blanc_oeuf':emoji = '🥚'; break;
+                        case 'filant':    emoji = '🧵'; break;
+                        case 'collant':   emoji = '📎'; break;
+                    }
+                    ctx.font = '13px sans-serif';
+                    ctx.fillStyle = config.colors.text;
+                    if (emoji) ctx.fillText(emoji, xCenter, yGlaire3);
                 }
             }
 
-            // Ligne 3 : CODE RÉSULTANT
-            const mucusCode = CycleComputer.classifyMucus(e.mucusSensation, e.mucusAspect);
-            if (mucusCode && mucusCode !== '--') {
-                ctx.font = "bold 11px sans-serif";
-                let codeColor = config.colors.text;
-
-                if (mucusCode === 'G+') codeColor = '#d81b60';
-                else if (mucusCode === 'G') codeColor = '#ff9800';
-                else if (mucusCode === 'h') codeColor = '#2196f3';
-                else if (mucusCode === 't') codeColor = '#9e9e9e';
-
-                ctx.fillStyle = codeColor;
-                const codeWidth = ctx.measureText(mucusCode).width;
-                ctx.fillText(mucusCode, xCenter - (codeWidth / 2), yGlaire3);
+            // Code résultant (G+, G, h, t)
+            if (hasSensationEntry || hasAspectEntry) {
+                const code = CycleComputer.classifyMucus(e.mucusSensation, e.mucusAspect);
+                if (code && code !== '--') {
+                    ctx.font = 'bold 10px sans-serif';
+                    const codeColors = {
+                        'G+': '#c62828',
+                        'G':  '#e65100',
+                        'h':  '#1565c0',
+                        't':  '#757575'
+                    };
+                    ctx.fillStyle = codeColors[code] || config.colors.text;
+                    ctx.fillText(code, xCenter, yGlaire4);
+                }
             }
 
             ctx.restore();
 
-            // TEMPÉRATURE
-            if (e.temp && !e.excludeTemp) {
-                const rawTemp = e.temp;
-                const rounded = this.roundTempForDisplay(rawTemp);
-                const y = this.getYForTemp(rounded);
+            // ── TEMPÉRATURE ───────────────────────────────────────────────────
+            const tempValid = e.temp && !e.excludeTemp;
 
+            if (tempValid) {
+                const rounded = this.roundTempForDisplay(e.temp);
+                const y = this.getYForTemp(rounded, gridHeight);
+
+                // Ligne reliant les points
                 if (prevPoint && prevCycleDay !== null) {
                     ctx.beginPath();
                     ctx.strokeStyle = config.colors.tempLine;
                     ctx.lineWidth = 2;
-
-                    // POINTILLÉS si les jours ne sont pas consécutifs
-                    if (cycleDay - prevCycleDay > 1) {
-                        ctx.setLineDash([5, 5]);
-                    } else {
-                        ctx.setLineDash([]);
-                    }
-
+                    ctx.setLineDash(cycleDay - prevCycleDay > 1 ? [5, 5] : []);
                     ctx.moveTo(prevPoint.x, prevPoint.y);
                     ctx.lineTo(xCenter, y);
                     ctx.stroke();
                     ctx.setLineDash([]);
                 }
 
-                // Draw high temp square background/stripes if this index is in analysis.highTempIndices
-                if (analysis && analysis.highTempIndices && analysis.highTempIndices.length > 0) {
-                    const globalIndex = entryIndex; // entries is sorted and entryIndex matches
-                    if (analysis.highTempIndices.includes(globalIndex)) {
-                        this.drawStripedSquareAt(xCenter, y, 26);
-                    }
+                // ── Rectangle hachuré : déjà dessiné avant la boucle ──
+
+                // ── Numéro 1-6 sous les températures de référence ────────────
+                if (analysis && analysis.lowTempIndices && analysis.lowTempIndices.includes(entryIndex)) {
+                    const pos = analysis.lowTempIndices.indexOf(entryIndex);
+                    // lowTempIndices[0] = plus ancien, [5] = plus récent
+                    // On numérote : plus récent = 1, plus ancien = 6
+                    const label = String(analysis.lowTempIndices.length - pos);
+                    ctx.save();
+                    ctx.font = 'bold 10px sans-serif';
+                    ctx.fillStyle = config.colors.refTempNumber;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(label, xCenter, y + 14);
+                    ctx.restore();
+
+                    // Cercle discret autour du point de référence
+                    ctx.save();
+                    ctx.strokeStyle = config.colors.refTempNumber;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.arc(xCenter, y, 6, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.restore();
                 }
 
+                // ── Triangle pour les hautes températures confirmées ──────────
+                const isHighTemp = analysis && analysis.highTempIndices &&
+                    analysis.highTempIndices.includes(entryIndex);
+                const isConfirmTemp = analysis &&
+                    analysis.tempShiftConfirmedIndex === entryIndex;
+
+                if (isHighTemp || (analysis && analysis.exception1Used && isConfirmTemp)) {
+                    this.drawFilledTriangle(xCenter, y - 15, 7, config.colors.highTempFill);
+                }
+
+                // ── Triangle vide pour les retraits (exception 2) ─────────────
+                if (analysis && analysis.retreatIndices && analysis.retreatIndices.includes(entryIndex)) {
+                    this.drawEmptyTriangle(xCenter, y - 14, 7, config.colors.retreatStroke);
+                }
+
+                // ── Point de température ──────────────────────────────────────
                 ctx.beginPath();
-                ctx.fillStyle = config.colors.tempDot;
-
-                if (analysis && analysis.highTempIndices) {
-                    const globalIndex = entryIndex;
-                    if (analysis.highTempIndices.includes(globalIndex)) {
-                        ctx.fillStyle = config.colors.highTempFill;
-                    }
-                }
-
+                const isHigh = analysis && analysis.highTempIndices && analysis.highTempIndices.includes(entryIndex);
+                const isConfirm = analysis && analysis.tempShiftConfirmedIndex === entryIndex;
+                ctx.fillStyle = (isHigh || isConfirm) ? config.colors.highTempFill : config.colors.tempDot;
                 ctx.arc(xCenter, y, 4, 0, Math.PI * 2);
                 ctx.fill();
 
-                // If this is the confirmed tempShift index, draw a filled triangle above the point
-                if (analysis && analysis.retreatIndices && analysis.retreatIndices.includes(entryIndex)) { 
-                    this.drawEmptyTriangle(xCenter, y - 12, 10, this.config.colors.excludedTriangle); 
-                }
-
-                // Optionnel : Triangle plein pour la température confirmant le shift (3e/4e haute)
-                if (analysis && analysis.confirmedShiftIndex === entryIndex) {
-                    this.drawFilledTriangle(xCenter, y - 12, 10, this.config.colors.confirmTriangle);
-                }
-
-                prevPoint = { x: xCenter, y: y };
+                prevPoint = { x: xCenter, y };
                 prevCycleDay = cycleDay;
+
             } else {
-                // Excluded or missing temp
+                // Température exclue : affichée en gris avec X
                 prevPoint = null;
                 prevCycleDay = null;
 
                 if (e.excludeTemp && e.temp) {
-                    // Draw the point (in gray) with "X" on top, no triangle
-                    const y = this.getYForTemp(e.temp || 36.5);
+                    const y = this.getYForTemp(e.temp, gridHeight);
                     ctx.beginPath();
-                    ctx.fillStyle = '#9e9e9e'; // Gris pour distinguer l'exclusion manuelle
+                    ctx.fillStyle = '#9e9e9e';
                     ctx.arc(xCenter, y, 4, 0, Math.PI * 2);
                     ctx.fill();
-
-                    // "X" par-dessus le point
                     ctx.fillStyle = config.colors.text;
-                    ctx.font = "bold 12px sans-serif"; // Plus visible
-                    ctx.fillText("X", xCenter - 6, y + 4); // Centré sur le point
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('✕', xCenter, y + 4);
                 }
             }
         });
 
-        // COVERLINE
-        if (analysis && analysis.coverLine) {
-            const yCover = this.getYForTemp(analysis.coverLine);
-            ctx.beginPath();
-            ctx.strokeStyle = this.config.colors.coverLine;
-            ctx.lineWidth = 2;
-            ctx.setLineDash([5, 5]);
-            ctx.moveTo(this.config.paddingLeft, yCover);
-            ctx.lineTo(this.config.paddingLeft + (entries.length * dayWidth), yCover);
-            ctx.stroke();
-            ctx.setLineDash([]);
-        }
-
-        // Peak day marker (vertical)
-        if (analysis && typeof analysis.peakDayIndex === 'number') {
-            this.drawPeakDayMarker(analysis.peakDayIndex, dayWidth);
+        // ── Marqueur du pic de glaire (trait vertical rose) ───────────────────
+        if (analysis && analysis.mucusPeakIndex !== null) {
+            const peakEntry = entries[analysis.mucusPeakIndex];
+            if (peakEntry) {
+                const peakCycleDay = this.getCycleDay(peakEntry.date, cycle.startDate);
+                const xPeak = config.paddingLeft + (peakCycleDay - 1) * dayWidth + dayWidth / 2;
+                ctx.save();
+                ctx.strokeStyle = config.colors.peak;
+                ctx.lineWidth = 2.5;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.moveTo(xPeak, config.headerHeight);
+                ctx.lineTo(xPeak, config.headerHeight + gridHeight);
+                ctx.stroke();
+                // Label "P" au-dessus
+                ctx.setLineDash([]);
+                ctx.font = 'bold 11px sans-serif';
+                ctx.fillStyle = config.colors.peak;
+                ctx.textAlign = 'center';
+                ctx.fillText('P', xPeak, config.headerHeight - 52);
+                ctx.restore();
+            }
         }
     }
 
-    // Draw a small filled upward triangle (used for confirmed shift)
-    drawFilledTriangle(xCenter, yTop, size, color) {
+    // ─────────────────────────────────────────────────────────────────────────
+    //  Formes géométriques
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** Triangle plein (pointe vers le haut) */
+    drawFilledTriangle(xCenter, yTip, size, color) {
         const { ctx } = this;
         ctx.save();
         ctx.fillStyle = color;
         ctx.beginPath();
-        ctx.moveTo(xCenter, yTop);
-        ctx.lineTo(xCenter - size, yTop + (size * 1.2));
-        ctx.lineTo(xCenter + size, yTop + (size * 1.2));
+        ctx.moveTo(xCenter, yTip);
+        ctx.lineTo(xCenter - size, yTip + size * 1.5);
+        ctx.lineTo(xCenter + size, yTip + size * 1.5);
         ctx.closePath();
         ctx.fill();
         ctx.restore();
     }
 
-    // Draw an empty (stroke) upward triangle (used for excluded temps)
-    drawEmptyTriangle(xCenter, yTop, size, strokeColor) {
+    /** Triangle vide (stroke) pour les retraits */
+    drawEmptyTriangle(xCenter, yTip, size, strokeColor) {
         const { ctx } = this;
         ctx.save();
         ctx.strokeStyle = strokeColor;
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.moveTo(xCenter, yTop);
-        ctx.lineTo(xCenter - size, yTop + (size * 1.2));
-        ctx.lineTo(xCenter + size, yTop + (size * 1.2));
+        ctx.moveTo(xCenter, yTip);
+        ctx.lineTo(xCenter - size, yTip + size * 1.5);
+        ctx.lineTo(xCenter + size, yTip + size * 1.5);
         ctx.closePath();
         ctx.stroke();
         ctx.restore();
     }
 
-    // Draw a striped square centered at (xCenter, yCenter)
-    drawStripedSquareAt(xCenter, yCenter, boxSize = 26) {
+    /** Rectangle hachuré (de coverline à coverline+0.2) pour les hautes températures */
+    drawHatchedRect(xLeft, yTop, width, height) {
         const { ctx, config } = this;
-        const xLeft = xCenter - boxSize / 2;
-        const yTop = yCenter - boxSize / 2;
-
         ctx.save();
-        // Background
-        ctx.fillStyle = config.colors.highTempStripBg;
-        ctx.fillRect(xLeft, yTop, boxSize, boxSize);
 
-        // Clip to square so stripes don't overflow
+        // Fond semi-transparent
+        ctx.fillStyle = config.colors.hatchBg;
+        ctx.fillRect(xLeft, yTop, width, height);
+
+        // Hachures diagonales clippées au rectangle
         ctx.beginPath();
-        ctx.rect(xLeft, yTop, boxSize, boxSize);
+        ctx.rect(xLeft, yTop, width, height);
         ctx.clip();
 
-        // Draw diagonal stripes
-        ctx.strokeStyle = config.colors.highTempStripLine;
+        ctx.strokeStyle = config.colors.hatchLine;
         ctx.lineWidth = 1;
         const step = 5;
-        for (let sx = xLeft - boxSize; sx < xLeft + boxSize * 2; sx += step) {
+        for (let sx = xLeft - height; sx < xLeft + width + height; sx += step) {
             ctx.beginPath();
             ctx.moveTo(sx, yTop);
-            ctx.lineTo(sx + boxSize, yTop + boxSize);
+            ctx.lineTo(sx + height, yTop + height);
             ctx.stroke();
         }
 
         ctx.restore();
     }
 
-    // Draw a vertical marker for peak day
-    drawPeakDayMarker(peakDayIndex, dayWidth) {
+    // ─────────────────────────────────────────────────────────────────────────
+    //  Saignements (footer)
+    // ─────────────────────────────────────────────────────────────────────────
+    drawBleeding(cycle, entries, dayWidth, gridHeight) {
         const { ctx, config } = this;
-        const x = config.paddingLeft + (peakDayIndex * dayWidth) + (dayWidth / 2);
-        const yTop = config.headerHeight;
-        const yBottom = config.headerHeight + config.gridHeight;
+        const bottomY = config.headerHeight + gridHeight;
 
-        ctx.save();
-        ctx.strokeStyle = config.colors.peak;
-        ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.moveTo(x, yTop);
-        ctx.lineTo(x, yBottom);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.restore();
-    }
+        ctx.font = '14px sans-serif';
 
-    drawBleeding(cycle, entries, dayWidth) {
-        const { ctx, config } = this;
-
-        ctx.font = "16px sans-serif";
-
-        entries.forEach((e) => {
+        entries.forEach(e => {
             if (!e.bleeding || e.bleeding === 'none') return;
 
             const cycleDay = this.getCycleDay(e.date, cycle.startDate);
-            const xCenter = config.paddingLeft + ((cycleDay - 1) * dayWidth) + (dayWidth / 2);
-            const yBaseline = config.headerHeight + config.gridHeight + 70;
+            const xCenter = config.paddingLeft + (cycleDay - 1) * dayWidth + dayWidth / 2;
+            const yBaseline = bottomY + 72;
 
-            let emoji = "";
+            let emoji = '';
             switch (e.bleeding) {
-                case "spotting": emoji = "💉"; break;
-                case "light": emoji = "🩸"; break;
-                case "medium": emoji = "🩸🩸"; break;
-                case "heavy": emoji = "🩸🩸🩸"; break;
+                case 'spotting': emoji = '💉'; break;
+                case 'light':    emoji = '🩸'; break;
+                case 'medium':   emoji = '🩸🩸'; break;
+                case 'heavy':    emoji = '🩸🩸🩸'; break;
             }
 
             ctx.save();
             ctx.translate(xCenter, yBaseline);
             ctx.rotate(-Math.PI / 2);
-            ctx.scale(0.4, 0.4);
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
+            ctx.scale(0.45, 0.45);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
             ctx.fillText(emoji, 0, 0);
             ctx.restore();
         });

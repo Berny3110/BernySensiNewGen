@@ -32,6 +32,10 @@ export class UIManager {
     init() {
         this.paperChart = new PaperRenderer('paperChartCanvas');
         this.cacheDOM();
+        
+        // Verrouiller l'orientation portrait pour l'application principale
+        this._lockOrientation('portrait');
+        
         setTimeout(() => this.setCurrentDateTime(), 80);
         this.initWheels();
         this.initTabs();
@@ -71,11 +75,7 @@ export class UIManager {
             overlay: document.getElementById('full-screen-chart-overlay'),
             btnOpenChart: document.getElementById('btn-open-chart'),
             btnCloseChart: document.getElementById('btn-close-chart'),
-            
-            // Contrôles de zoom
-            btnZoomIn: document.getElementById('btn-zoom-in'),
-            btnZoomOut: document.getElementById('btn-zoom-out'),
-            btnZoomReset: document.getElementById('btn-zoom-reset'),
+            btnRotateScreen: document.getElementById('btn-rotate-screen'),
             
             inputs: {
                 sensation: document.querySelectorAll('input[name="mucus-sensation"]'),
@@ -232,37 +232,67 @@ export class UIManager {
         }
     }
 		
+    // ─── Gestion orientation écran ─────────────────────────────────────────
+    _lockOrientation(type) {
+        if (screen.orientation && typeof screen.orientation.lock === 'function') {
+            screen.orientation.lock(type).catch(() => {
+                // Silencieux : certains navigateurs/OS refusent le verrou
+            });
+        }
+    }
+
+    _toggleOrientation() {
+        if (!screen.orientation) return;
+        const current = screen.orientation.type || '';
+        const isLandscape = current.includes('landscape');
+        const target = isLandscape ? 'portrait' : 'landscape';
+        this._lockOrientation(target);
+        const btn = this.dom.btnRotateScreen;
+        if (btn) {
+            btn.textContent = isLandscape ? '🔄 Paysage' : '🔄 Portrait';
+        }
+        // Redessiner après la rotation
+        setTimeout(() => this.updateGlobalUI(), 400);
+    }
+
 		initChartOverlay() {
 				if (this.dom.btnOpenChart) {
-						this.dom.btnOpenChart.addEventListener('click', async () => {
+						this.dom.btnOpenChart.addEventListener('click', () => {
 								this.dom.overlay.classList.remove('hidden');
 								this.chartZoom = 1.0;
-								this.updateGlobalUI();
 
-								if (screen.orientation && screen.orientation.lock) {
-										try { await screen.orientation.lock('landscape'); } catch (err) { console.log("Rotation forcée bloquée"); }
+								// Verrouiller paysage pour le graphique
+								this._lockOrientation('landscape');
+								if (this.dom.btnRotateScreen) {
+										this.dom.btnRotateScreen.textContent = '🔄 Portrait';
 								}
 
 								setTimeout(() => {
 										this.updateGlobalUI();
 										const container = document.getElementById('canvas-scroll-container');
-										if (container) container.scrollLeft = 0;
-								}, 200);
+										if (container) { container.scrollLeft = 0; container.scrollTop = 0; }
+								}, 300);
 						});
 				}
 
 				if (this.dom.btnCloseChart) {
 						this.dom.btnCloseChart.addEventListener('click', () => {
-								if (screen.orientation && screen.orientation.unlock) {
-										screen.orientation.unlock();
-								}
 								this.dom.overlay.classList.add('hidden');
+								// Retour en portrait pour l'app principale
+								this._lockOrientation('portrait');
+						});
+				}
+
+				// Bouton de rotation dans l'overlay
+				if (this.dom.btnRotateScreen) {
+						this.dom.btnRotateScreen.addEventListener('click', () => {
+								this._toggleOrientation();
 						});
 				}
 
 				window.addEventListener('orientationchange', () => {
 						if (!this.dom.overlay.classList.contains('hidden')) {
-								setTimeout(() => { this.updateGlobalUI(); }, 300);
+								setTimeout(() => { this.updateGlobalUI(); }, 400);
 						}
 				});
 				window.addEventListener('resize', () => {
@@ -697,10 +727,6 @@ export class UIManager {
     updateGlobalUI() {
         const cycle = this.dm.getCurrentCycle();
         const analysis = CycleComputer.analyzeCycle(cycle);
-				
-				console.log("🔥 ANALYSE COURANTE :", analysis);
-				console.log("🔥 CYCLE COURANT :", cycle);
-
         
         if (this.paperChart) {
             this.paperChart.render(cycle, analysis, this.chartZoom);
