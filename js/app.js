@@ -13,8 +13,21 @@
 import { DataManager } from './dataManager.js';
 import { UIManager } from './uiManager.js';
 
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').then(reg => {
+    reg.addEventListener('updatefound', () => {
+      console.log('Nouvelle version détectée !');
+      // Option : prompt utilisateur
+      if (confirm('Mise à jour disponible. Recharger ?')) {
+        window.location.reload();
+      }
+    });
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const dm = new DataManager();
     const ui = new UIManager(dm); 
     ui.init();
 });
+
