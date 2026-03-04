@@ -44,6 +44,36 @@ export class UIManager {
         this.initCycleManager();
         this.initTheme();
         this.initChartOverlay();
+
+				// 1. OUVERTURE DU GRAPHIQUE
+				this.dom.btnOpenChart.addEventListener('click', async () => {
+						document.getElementById('full-screen-chart-overlay').classList.remove('hidden');
+						
+						// VERROUILLAGE PAYSAGE
+						try {
+								if (screen.orientation && screen.orientation.lock) {
+										await screen.orientation.lock('landscape');
+								}
+						} catch (err) {
+								console.log("Le verrouillage paysage n'est pas possible sur ce navigateur");
+						}
+
+						this.updateGlobalUI();
+				});
+
+				// 2. FERMETURE DU GRAPHIQUE
+				this.dom.btnCloseChart.addEventListener('click', async () => {
+						document.getElementById('full-screen-chart-overlay').classList.add('hidden');
+						
+						// VERROUILLAGE PORTRAIT
+						try {
+								if (screen.orientation && screen.orientation.lock) {
+										await screen.orientation.lock('portrait');
+								}
+						} catch (err) {
+								console.log("Le verrouillage portrait n'est pas possible");
+						}
+				});
         
         const btnTemp = document.getElementById('btn-validate-temp');
         if(btnTemp) btnTemp.addEventListener('click', () => this.validateTemperature());
@@ -75,7 +105,6 @@ export class UIManager {
             overlay: document.getElementById('full-screen-chart-overlay'),
             btnOpenChart: document.getElementById('btn-open-chart'),
             btnCloseChart: document.getElementById('btn-close-chart'),
-            btnRotateScreen: document.getElementById('btn-rotate-screen'),
             
             inputs: {
                 sensation: document.querySelectorAll('input[name="mucus-sensation"]'),
