@@ -256,43 +256,44 @@ export class UIManager {
 
 		initChartOverlay() {
 				// 1. OUVERTURE DU GRAPHIQUE
-						if (this.dom.btnOpenChart) {
-								this.dom.btnOpenChart.addEventListener('click', () => {
-										this.dom.overlay.classList.remove('hidden');
-										this.chartZoom = 1.0;
+				if (this.dom.btnOpenChart) {
+						this.dom.btnOpenChart.addEventListener('click', () => {
+								this.dom.overlay.classList.remove('hidden');
+								this.chartZoom = 1.0;
 
-										// Verrouiller paysage pour le graphique
-										this._lockOrientation('landscape');
+								// On demande au téléphone de passer en paysage (marche sur Android PWA)
+								// Si le manifest bloque en portrait, c'est le CSS (étape suivante) qui prendra le relais
+								if (screen.orientation && screen.orientation.lock) {
+										screen.orientation.lock('landscape').catch(e => console.log("Lock paysage refusé"));
+								}
 
-										setTimeout(() => {
-												this.updateGlobalUI();
-												const container = document.getElementById('canvas-scroll-container');
-												if (container) { container.scrollLeft = 0; container.scrollTop = 0; }
-										}, 300);
-								});
-						}
-
-						// 2. FERMETURE DU GRAPHIQUE
-						if (this.dom.btnCloseChart) {
-								this.dom.btnCloseChart.addEventListener('click', () => {
-										this.dom.overlay.classList.add('hidden');
-										// Retour en portrait pour l'app principale
-										this._lockOrientation('portrait');
-								});
-						}
-
-				// Bouton de rotation dans l'overlay
-				if (this.dom.btnRotateScreen) {
-						this.dom.btnRotateScreen.addEventListener('click', () => {
-								this._toggleOrientation();
+								setTimeout(() => {
+										this.updateGlobalUI();
+										const container = document.getElementById('canvas-scroll-container');
+										if (container) { container.scrollLeft = 0; container.scrollTop = 0; }
+								}, 300);
 						});
 				}
+
+				// 2. FERMETURE DU GRAPHIQUE
+				if (this.dom.btnCloseChart) {
+						this.dom.btnCloseChart.addEventListener('click', () => {
+								this.dom.overlay.classList.add('hidden');
+								// On repasse en portrait
+								if (screen.orientation && screen.orientation.lock) {
+										screen.orientation.lock('portrait').catch(e => console.log("Lock portrait refusé"));
+								}
+						});
+				}
+
+				// --- ICI ON A SUPPRIMÉ LE BOUTON DE ROTATION (btnRotateScreen) ---
 
 				window.addEventListener('orientationchange', () => {
 						if (!this.dom.overlay.classList.contains('hidden')) {
 								setTimeout(() => { this.updateGlobalUI(); }, 400);
 						}
 				});
+
 				window.addEventListener('resize', () => {
 						if (!this.dom.overlay.classList.contains('hidden')) {
 								this.updateGlobalUI();
@@ -302,13 +303,14 @@ export class UIManager {
 				const container = document.getElementById('canvas-scroll-container') || this.dom.overlay;
 				if (!container) return;
 
-				// Fonction utilitaire pour activer/désactiver touch-action selon le zoom
+				// ==========================================================
+				// GARDE TOUTE LA SUITE (Zoom, Pointers, Wheel, etc.) INTACTE
+				// ==========================================================
+				
 				const updateContainerTouchAction = () => {
-						// Si zoom === 1, laisser le navigateur gérer le scroll natif
 						container.style.touchAction = (this.chartZoom && this.chartZoom !== 1.0) ? 'none' : 'auto';
 				};
 
-				// Appeler au démarrage (overlay ouvert)
 				updateContainerTouchAction();
 
 				const self = this;
@@ -356,7 +358,6 @@ export class UIManager {
 						if (!pointers.has(e.pointerId)) return;
 						pointers.set(e.pointerId, e);
 
-						// PINCH (2 pointeurs)
 						if (pointers.size === 2) {
 								const pts = Array.from(pointers.values());
 								const curDist = getDistance(pts[0], pts[1]);
@@ -391,7 +392,6 @@ export class UIManager {
 								return;
 						}
 
-						// PAN (1 pointeur) quand zoom != 1
 						if (isDragging && pointers.size === 1 && lastPointerPos) {
 								const dx = e.clientX - lastPointerPos.x;
 								const dy = e.clientY - lastPointerPos.y;
@@ -416,9 +416,7 @@ export class UIManager {
 						lastPointerPos = null;
 				}, { passive: true });
 
-				// Wheel / trackpad zoom centré sur la souris
 				container.addEventListener('wheel', (e) => {
-						// On considère zoom si Ctrl+wheel ou trackpad (delta small)
 						const rect = container.getBoundingClientRect();
 						const centerX = e.clientX - rect.left;
 						const centerY = e.clientY - rect.top;
@@ -446,14 +444,12 @@ export class UIManager {
 						e.preventDefault();
 				}, { passive: false });
 
-				// Empêcher le scroll natif pendant pinch (touchmove) uniquement si 2 touches
 				container.addEventListener('touchmove', (e) => {
 						if (e.touches && e.touches.length === 2) {
 								e.preventDefault();
 						}
 				}, { passive: false });
 
-				// S'assurer que touch-action est correct quand on ouvre/ferme l'overlay
 				const observer = new MutationObserver(() => updateContainerTouchAction());
 				observer.observe(this.dom.overlay, { attributes: true, attributeFilter: ['class'] });
 		}

@@ -693,3 +693,29 @@ select {
         gap: 4px;
     }
 }
+
+
+/* Si l'écran est tenu verticalement et qu'on regarde le graphique */
+@media (orientation: portrait) {
+    #full-screen-chart-overlay:not(.hidden) .canvas-scroll-container {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        /* On fait pivoter le contenu de 90 degrés */
+        transform: translate(-50%, -50%) rotate(90deg);
+        /* On inverse largeur et hauteur */
+        width: 100vh; 
+        height: 100vw;
+        overflow-x: auto;
+    }
+    
+    /* On fait aussi pivoter le bouton retour pour qu'il soit dans le bon sens */
+    #full-screen-chart-overlay:not(.hidden) .overlay-header {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        transform: rotate(90deg);
+        transform-origin: left top;
+        z-index: 999;
+    }
+}
