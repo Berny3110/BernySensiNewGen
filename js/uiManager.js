@@ -45,36 +45,6 @@ export class UIManager {
         this.initTheme();
         this.initChartOverlay();
 
-				// 1. OUVERTURE DU GRAPHIQUE
-				this.dom.btnOpenChart.addEventListener('click', async () => {
-						document.getElementById('full-screen-chart-overlay').classList.remove('hidden');
-						
-						// VERROUILLAGE PAYSAGE
-						try {
-								if (screen.orientation && screen.orientation.lock) {
-										await screen.orientation.lock('landscape');
-								}
-						} catch (err) {
-								console.log("Le verrouillage paysage n'est pas possible sur ce navigateur");
-						}
-
-						this.updateGlobalUI();
-				});
-
-				// 2. FERMETURE DU GRAPHIQUE
-				this.dom.btnCloseChart.addEventListener('click', async () => {
-						document.getElementById('full-screen-chart-overlay').classList.add('hidden');
-						
-						// VERROUILLAGE PORTRAIT
-						try {
-								if (screen.orientation && screen.orientation.lock) {
-										await screen.orientation.lock('portrait');
-								}
-						} catch (err) {
-								console.log("Le verrouillage portrait n'est pas possible");
-						}
-				});
-        
         const btnTemp = document.getElementById('btn-validate-temp');
         if(btnTemp) btnTemp.addEventListener('click', () => this.validateTemperature());
         
@@ -285,32 +255,31 @@ export class UIManager {
     }
 
 		initChartOverlay() {
-				if (this.dom.btnOpenChart) {
-						this.dom.btnOpenChart.addEventListener('click', () => {
-								this.dom.overlay.classList.remove('hidden');
-								this.chartZoom = 1.0;
+				// 1. OUVERTURE DU GRAPHIQUE
+						if (this.dom.btnOpenChart) {
+								this.dom.btnOpenChart.addEventListener('click', () => {
+										this.dom.overlay.classList.remove('hidden');
+										this.chartZoom = 1.0;
 
-								// Verrouiller paysage pour le graphique
-								this._lockOrientation('landscape');
-								if (this.dom.btnRotateScreen) {
-										this.dom.btnRotateScreen.textContent = '🔄 Portrait';
-								}
+										// Verrouiller paysage pour le graphique
+										this._lockOrientation('landscape');
 
-								setTimeout(() => {
-										this.updateGlobalUI();
-										const container = document.getElementById('canvas-scroll-container');
-										if (container) { container.scrollLeft = 0; container.scrollTop = 0; }
-								}, 300);
-						});
-				}
+										setTimeout(() => {
+												this.updateGlobalUI();
+												const container = document.getElementById('canvas-scroll-container');
+												if (container) { container.scrollLeft = 0; container.scrollTop = 0; }
+										}, 300);
+								});
+						}
 
-				if (this.dom.btnCloseChart) {
-						this.dom.btnCloseChart.addEventListener('click', () => {
-								this.dom.overlay.classList.add('hidden');
-								// Retour en portrait pour l'app principale
-								this._lockOrientation('portrait');
-						});
-				}
+						// 2. FERMETURE DU GRAPHIQUE
+						if (this.dom.btnCloseChart) {
+								this.dom.btnCloseChart.addEventListener('click', () => {
+										this.dom.overlay.classList.add('hidden');
+										// Retour en portrait pour l'app principale
+										this._lockOrientation('portrait');
+								});
+						}
 
 				// Bouton de rotation dans l'overlay
 				if (this.dom.btnRotateScreen) {
