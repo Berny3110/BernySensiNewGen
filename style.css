@@ -695,27 +695,60 @@ select {
 }
 
 
-/* Si l'écran est tenu verticalement et qu'on regarde le graphique */
+/* ========== RUSE PAYSAGE ROBUSTE ========== */
 @media (orientation: portrait) {
-    #full-screen-chart-overlay:not(.hidden) .canvas-scroll-container {
+    #full-screen-chart-overlay {
         position: fixed;
-        top: 50%;
-        left: 50%;
-        /* On fait pivoter le contenu de 90 degrés */
-        transform: translate(-50%, -50%) rotate(90deg);
-        /* On inverse largeur et hauteur */
-        width: 100vh; 
-        height: 100vw;
-        overflow-x: auto;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        background: var(--bg-body);
+        z-index: 9999;
+        overflow: hidden;
     }
-    
-    /* On fait aussi pivoter le bouton retour pour qu'il soit dans le bon sens */
-    #full-screen-chart-overlay:not(.hidden) .overlay-header {
-        position: fixed;
-        top: 20px;
-        left: 20px;
+
+    /* Rotation du conteneur de scroll */
+    #full-screen-chart-overlay .canvas-scroll-container {
+        position: absolute;
+        top: 0;
+        left: 100vw; /* On le pousse à droite */
+        width: 100vh; /* Sa largeur devient la hauteur du tel */
+        height: 100vw; /* Sa hauteur devient la largeur du tel */
+        
         transform: rotate(90deg);
-        transform-origin: left top;
-        z-index: 999;
+        transform-origin: top left;
+        
+        overflow-x: auto;
+        overflow-y: hidden;
+        display: block;
+        padding: 0;
+        margin: 0;
+    }
+
+    /* Forcer le canvas à occuper toute la "hauteur" du paysage */
+    #paperChartCanvas {
+        height: 100% !important;
+        width: auto !important;
+        display: block;
+    }
+
+    /* Replacer le bouton Retour en haut à gauche du mode paysage */
+    /* (Ce qui correspond physiquement au haut à droite du téléphone vertical) */
+    #full-screen-chart-overlay .overlay-header {
+        position: absolute;
+        top: 10px;
+        right: 10px; 
+        z-index: 10000;
+        transform: rotate(90deg);
+        transform-origin: center;
+    }
+
+    #btn-close-chart {
+        padding: 10px 15px;
+        background: var(--accent);
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-weight: bold;
     }
 }

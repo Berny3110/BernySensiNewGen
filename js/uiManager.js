@@ -267,11 +267,18 @@ export class UIManager {
 										screen.orientation.lock('landscape').catch(e => console.log("Lock paysage refusé"));
 								}
 
+								// Dans btnOpenChart.addEventListener('click', ...)
 								setTimeout(() => {
+										// On force un rafraîchissement complet pour que le canvas capte 
+										// qu'il est maintenant dans un conteneur de 100vh
 										this.updateGlobalUI();
+										
 										const container = document.getElementById('canvas-scroll-container');
-										if (container) { container.scrollLeft = 0; container.scrollTop = 0; }
-								}, 300);
+										if (container) { 
+												container.scrollLeft = 0; 
+												container.scrollTop = 0; 
+										}
+								}, 150); // Un délai un peu plus court pour éviter le flash blanc
 						});
 				}
 
