@@ -734,14 +734,17 @@ select {
 
     /* Replacer le bouton Retour en haut à gauche du mode paysage */
     /* (Ce qui correspond physiquement au haut à droite du téléphone vertical) */
-    #full-screen-chart-overlay .overlay-header {
-        position: absolute;
-        top: 10px;
-        right: 10px; 
-        z-index: 10000;
-        transform: rotate(90deg);
-        transform-origin: center;
-    }
+		#full-screen-chart-overlay .overlay-header {
+						position: absolute;
+						/* On le plaque dans le coin qui devient le "Haut-Gauche" en paysage */
+						top: 10px; 
+						right: 15px; 
+						width: auto;
+						height: auto;
+						z-index: 10001;
+						transform: rotate(90deg);
+						transform-origin: center;
+				}
 
     #btn-close-chart {
         padding: 10px 15px;

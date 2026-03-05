@@ -399,11 +399,22 @@ export class UIManager {
 								return;
 						}
 
+						// PAN (1 pointeur) quand zoom != 1
 						if (isDragging && pointers.size === 1 && lastPointerPos) {
-								const dx = e.clientX - lastPointerPos.x;
-								const dy = e.clientY - lastPointerPos.y;
+								let dx = e.clientX - lastPointerPos.x;
+								let dy = e.clientY - lastPointerPos.y;
+
+								// RUSE : Si on est en mode portrait (donc graphique pivoté par CSS)
+								// On inverse les axes pour que le glissement suive le doigt
+								if (window.innerHeight > window.innerWidth) {
+										let temp = dx;
+										dx = dy;      // Le mouvement horizontal devient vertical
+										dy = -temp;   // Le mouvement vertical devient horizontal inversé
+								}
+
 								container.scrollLeft -= dx;
 								container.scrollTop -= dy;
+								
 								lastPointerPos = { x: e.clientX, y: e.clientY };
 								e.preventDefault && e.preventDefault();
 						}
