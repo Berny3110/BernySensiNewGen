@@ -736,22 +736,25 @@ select {
     /* (Ce qui correspond physiquement au haut à droite du téléphone vertical) */
 		#full-screen-chart-overlay .overlay-header {
 						position: absolute;
-						/* On le plaque dans le coin qui devient le "Haut-Gauche" en paysage */
-						top: 10px; 
+						/* "bottom" et "right" sur le tel vertical = "Top Right" en paysage */
+						bottom: 15px; 
 						right: 15px; 
 						width: auto;
 						height: auto;
 						z-index: 10001;
+						
+						/* On le fait pivoter sur lui-même pour que le texte soit horizontal */
 						transform: rotate(90deg);
 						transform-origin: center;
 				}
 
-    #btn-close-chart {
-        padding: 10px 15px;
-        background: var(--accent);
-        color: white;
-        border: none;
-        border-radius: 5px;
-        font-weight: bold;
-    }
+				#btn-close-chart {
+						padding: 12px 20px;
+						background: var(--accent);
+						color: white;
+						border: none;
+						border-radius: 8px;
+						font-weight: bold;
+						box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+				}
 }

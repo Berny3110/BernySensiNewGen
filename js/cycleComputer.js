@@ -30,7 +30,7 @@ export class CycleComputer {
 
         if (sensation === 'humide') return 'h';
 
-        if (sensation === 'seche' && (aspect === 'rien' || aspect === 'none')) return 't';
+        if (sensation === 'seche' && (aspect === 'rien' || aspect === 'none')) return 's';
 
         if ((sensation === 'rien' || sensation === 'none') &&
             (aspect    === 'rien' || aspect    === 'none')) return '--';
@@ -39,7 +39,7 @@ export class CycleComputer {
     }
 
     static getMucusWeight(code) {
-        return { 'G+': 4, 'G': 3, 'h': 2, 't': 1, '--': 0 }[code] ?? 0;
+        return { 'G+': 4, 'G': 3, 'h': 2, 's': 1, '--': 0 }[code] ?? 0;
     }
 
     // ─────────────────────────────────────────────────────────────────────────

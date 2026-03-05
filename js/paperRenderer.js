@@ -400,7 +400,7 @@ export class PaperRenderer {
                         'G+': '#c62828',
                         'G':  '#e65100',
                         'h':  '#1565c0',
-                        't':  '#757575'
+                        's':  '#757575'
                     };
                     ctx.fillStyle = codeColors[code] || config.colors.text;
                     ctx.fillText(code, xCenter, yGlaire4);
