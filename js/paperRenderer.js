@@ -343,6 +343,7 @@ export class PaperRenderer {
                     else if (e.perturbations['p-illness']) icon = '🤒';
                     else if (e.perturbations['p-stress']) icon = '⚡';
                     else if (e.perturbations['p-late']) icon = '⏰';
+										else if (e.perturbations['p-love']) icon = '❤️';
                 }
                 ctx.fillText(icon, xCenter, yGlaire1);
             }
@@ -358,11 +359,10 @@ export class PaperRenderer {
                 } else if (e.mucusSensation && e.mucusSensation !== 'none') {
                     let emoji = '';
                     switch (e.mucusSensation) {
-                        case 'seche':    emoji = '🌵'; break;
-                        case 'humide':   emoji = '💧'; break;
-                        case 'mouillee': emoji = '💦'; break;
-                        case 'glissante':emoji = '⛸️'; break;
-                    }
+												case 'sec':     emoji = '🌵'; break;
+												case 'humide':  emoji = '💧'; break;
+												case 'mouille': emoji = '💦'; break;
+										}
                     ctx.font = '13px sans-serif';
                     ctx.fillStyle = config.colors.text;
                     if (emoji) ctx.fillText(emoji, xCenter, yGlaire2);
@@ -378,13 +378,10 @@ export class PaperRenderer {
                     ctx.fillText('∅', xCenter, yGlaire3);
                 } else if (e.mucusAspect && e.mucusAspect !== 'none') {
                     let emoji = '';
-                    switch (e.mucusAspect) {
-                        case 'cremeux':   emoji = '🥛'; break;
-                        case 'jaunatre':  emoji = '🟡'; break;
-                        case 'blanc_oeuf':emoji = '🥚'; break;
-                        case 'filant':    emoji = '🧵'; break;
-                        case 'collant':   emoji = '📎'; break;
-                    }
+										switch (e.mucusAspect) {
+												case 'epais': emoji = '🥛'; break;
+												case 'clair': emoji = '🥚'; break;
+										}
                     ctx.font = '13px sans-serif';
                     ctx.fillStyle = config.colors.text;
                     if (emoji) ctx.fillText(emoji, xCenter, yGlaire3);
@@ -396,12 +393,13 @@ export class PaperRenderer {
                 const code = CycleComputer.classifyMucus(e.mucusSensation, e.mucusAspect);
                 if (code && code !== '--') {
                     ctx.font = 'bold 10px sans-serif';
-                    const codeColors = {
-                        'G+': '#c62828',
-                        'G':  '#e65100',
-                        'h':  '#1565c0',
-                        's':  '#757575'
-                    };
+										const codeColors = {
+												'G+': '#c62828',
+												'G':  '#e65100',
+												'h':  '#1565c0',
+												'S':  '#757575',
+												'Ø':  '#888888'
+										};
                     ctx.fillStyle = codeColors[code] || config.colors.text;
                     ctx.fillText(code, xCenter, yGlaire4);
                 }

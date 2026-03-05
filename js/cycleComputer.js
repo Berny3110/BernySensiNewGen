@@ -19,24 +19,62 @@ export class CycleComputer {
      *  G+ = glaire supérieure (blanc d'œuf, filant, mouillée, glissante)
      * --  = rien observé
      */
-    static classifyMucus(sensation, aspect) {
-        if (!sensation) sensation = 'none';
-        if (!aspect)    aspect   = 'none';
+		static classifyMucus(sensation, aspect) {
+						if (!sensation) sensation = 'none';
+						if (!aspect)    aspect   = 'none';
 
-        if (sensation === 'mouillee'  || sensation === 'glissante' ||
-            aspect    === 'blanc_oeuf'|| aspect    === 'filant') return 'G+';
+						// ─────────────────────────────────────────────────────────
+						// Catégorie G+ (Glaire supérieure - Fertilité maximale)
+						// ─────────────────────────────────────────────────────────
+						// Selon Sensiplan, dès que l'aspect est "clair/translucide", c'est G+ peu importe la sensation
+						if (sensation === 'mouille' && aspect === 'clair') return 'G+';
+						if (sensation === 'humide'  && aspect === 'clair') return 'G+';
+						if (sensation === 'sec'     && aspect === 'clair') return 'G+';
+						if (sensation === 'rien'    && aspect === 'clair') return 'G+';
+						if (sensation === 'none'    && aspect === 'clair') return 'G+';
 
-        if (aspect === 'cremeux' || aspect === 'jaunatre' || aspect === 'collant') return 'G';
+						// Dès que la sensation est "mouillé/lubrifié", c'est G+ peu importe l'aspect
+						if (sensation === 'mouille' && aspect === 'epais') return 'G+';
+						if (sensation === 'mouille' && aspect === 'rien')  return 'G+';
+						if (sensation === 'mouille' && aspect === 'none')  return 'G+';
 
-        if (sensation === 'humide') return 'h';
+						// ─────────────────────────────────────────────────────────
+						// Catégorie G (Glaire inférieure)
+						// ─────────────────────────────────────────────────────────
+						// L'aspect est "épais/crémeux/trouble", et la sensation n'est pas "mouillé"
+						if (sensation === 'humide' && aspect === 'epais') return 'G';
+						if (sensation === 'sec'    && aspect === 'epais') return 'G';
+						if (sensation === 'rien'   && aspect === 'epais') return 'G';
+						if (sensation === 'none'   && aspect === 'epais') return 'G';
 
-        if (sensation === 'seche' && (aspect === 'rien' || aspect === 'none')) return 's';
+						// ─────────────────────────────────────────────────────────
+						// Catégorie h (Sensation humide sans glaire visible)
+						// ─────────────────────────────────────────────────────────
+						if (sensation === 'humide' && aspect === 'rien') return 'h';
+						if (sensation === 'humide' && aspect === 'none') return 'h';
 
-        if ((sensation === 'rien' || sensation === 'none') &&
-            (aspect    === 'rien' || aspect    === 'none')) return '--';
+						// ─────────────────────────────────────────────────────────
+						// Catégorie S (Sensation sèche/rêche, rien de visible)
+						// ─────────────────────────────────────────────────────────
+						if (sensation === 'sec' && aspect === 'rien') return 'S';
+						if (sensation === 'sec' && aspect === 'none') return 'S';
 
-        return 'h';
-    }
+						// ─────────────────────────────────────────────────────────
+						// Catégorie Ø (Rien senti, rien vu)
+						// ─────────────────────────────────────────────────────────
+						if (sensation === 'rien' && aspect === 'rien') return 'Ø';
+						if (sensation === 'rien' && aspect === 'none') return 'Ø';
+						if (sensation === 'none' && aspect === 'rien') return 'Ø';
+						if (sensation === 'none' && aspect === 'none') return 'Ø';
+
+						// Sécurité par défaut
+						return 'Ø';
+				}
+
+				static getMucusWeight(code) {
+						// On met à jour les clés pour matcher les vraies lettres de la méthode
+						return { 'G+': 4, 'G': 3, 'h': 2, 'S': 1, 'Ø': 0 }[code] ?? 0;
+				}
 
     static getMucusWeight(code) {
         return { 'G+': 4, 'G': 3, 'h': 2, 's': 1, '--': 0 }[code] ?? 0;

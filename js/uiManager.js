@@ -763,8 +763,9 @@ export class UIManager {
             let details = [];
             if (e.temp) details.push(`🌡️ ${e.temp}°C`);
             
-            const mucusCode = CycleComputer.classifyMucus(e.mucusSensation, e.mucusAspect);
-            if (mucusCode && mucusCode !== '--') details.push(`Glaire: ${mucusCode}`);
+						const mucusCode = CycleComputer.classifyMucus(e.mucusSensation, e.mucusAspect);
+						// On passe de '--' à 'Ø'
+						if (mucusCode && mucusCode !== 'Ø') details.push(`Glaire: ${mucusCode}`);
             
             if (e.bleeding && e.bleeding !== 'none') {
                 const bleedMap = {
