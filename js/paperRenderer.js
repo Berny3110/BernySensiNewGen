@@ -21,7 +21,7 @@ export class PaperRenderer {
         this.config = {
             dayWidth: 32,
             headerHeight: 70,
-            footerHeight: 110,
+            footerHeight: 150,
             tempMin: 36.0,
             tempMax: 37.0,
             gridHeight: 300,
@@ -46,11 +46,83 @@ export class PaperRenderer {
                 hatchLine: 'rgba(255, 87, 34, 0.55)',
                 retreatStroke: '#9e9e9e',
                 refTempNumber: '#1565c0',   // Bleu foncé pour les chiffres 1-6
+								// Glaires
+								'G+': '#c62828',
+								'G':  '#e65100',
+								'h':  '#1565c0',
+								'S':  '#757575',
+								'Ø':  '#888888',
+								text: '#333333',
             }
         };
 
         this.updateThemeColors();
     }
+		
+		drawFooterSymbols(cycle, entries, dayWidth, gridHeight) {
+				const { ctx, config } = this;
+				const bottomY = config.headerHeight + gridHeight;
+
+				// Définition de la position Y (hauteur) de chaque couloir
+				const lanes = {
+						mucusCode: bottomY + 20,
+						mucusEmoji: bottomY + 45,
+						bleeding: bottomY + 70,
+						love: bottomY + 95,
+						disturbance: bottomY + 120
+				};
+
+				ctx.textAlign = 'center';
+				ctx.textBaseline = 'middle';
+
+				entries.forEach(e => {
+						const cycleDay = this.getCycleDay(e.date, cycle.startDate);
+						if (cycleDay < 1) return;
+						const xCenter = config.paddingLeft + (cycleDay - 1) * dayWidth + dayWidth / 2;
+
+						// 1. Glaire : Code (G+, G, h...)
+						if (e.mucusSensation || e.mucusAspect) {
+								const code = CycleComputer.classifyMucus(e.mucusSensation, e.mucusAspect);
+								ctx.font = 'bold 14px sans-serif';
+								ctx.fillStyle = config.colors[code] || '#888888'; // Assure-toi d'avoir ces couleurs
+								ctx.fillText(code, xCenter, lanes.mucusCode);
+						}
+
+						// 2. Glaire : Emojis Sensation/Aspect
+						let emojiStr = '';
+						if (e.mucusSensation === 'mouille') emojiStr += '💦';
+						else if (e.mucusSensation === 'humide') emojiStr += '💧';
+						else if (e.mucusSensation === 'sec') emojiStr += '🌵';
+						
+						if (e.mucusAspect === 'clair') emojiStr += '🥚';
+						else if (e.mucusAspect === 'epais') emojiStr += '🥛';
+
+						if (emojiStr) {
+								ctx.font = '12px sans-serif';
+								ctx.fillText(emojiStr, xCenter, lanes.mucusEmoji);
+						}
+
+						// 3. Saignements
+						if (e.bleeding && e.bleeding !== 'none') {
+								let bEmoji = e.bleeding === 'heavy' ? '🩸🩸🩸' : (e.bleeding === 'medium' ? '🩸🩸' : '🩸');
+								if (e.bleeding === 'spotting') bEmoji = '💉';
+								ctx.font = '12px sans-serif';
+								ctx.fillText(bEmoji, xCenter, lanes.bleeding);
+						}
+
+						// 4. Love (Rapports)
+						if (e.love) {
+								ctx.font = '14px sans-serif';
+								ctx.fillText('❤️', xCenter, lanes.love);
+						}
+
+						// 5. Perturbations
+						if (e.disturbance) {
+								ctx.font = '14px sans-serif';
+								ctx.fillText('⚠️', xCenter, lanes.disturbance);
+						}
+				});
+		}
 
     roundTempForDisplay(temp) {
         // Arrondi au demi-dixième (0.05°C)
@@ -153,7 +225,10 @@ export class PaperRenderer {
         this.drawData(cycle, analysis, entries, dayWidth, gridHeight, baseWidth);
 
         // Étape 4 : Saignements
-        this.drawBleeding(cycle, entries, dayWidth, gridHeight);
+        // supprimé !! this.drawBleeding(cycle, entries, dayWidth, gridHeight);
+				
+				// Nouvelle Etape
+				this.drawFooterSymbols(cycle, entries, dayWidth, gridHeight);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -323,90 +398,7 @@ export class PaperRenderer {
             ctx.fillText(dateStr, xCenter, config.headerHeight + gridHeight + 38);
             ctx.restore();
 
-            // ── MUCUS (3 lignes dans le header) ──────────────────────────────
-            const yGlaire1 = config.headerHeight - 48; // Perturbations
-            const yGlaire2 = config.headerHeight - 32; // Sensation
-            const yGlaire3 = config.headerHeight - 16; // Aspect
-            const yGlaire4 = config.headerHeight - 2;  // Code résultant
-
-            ctx.save();
-            ctx.font = '13px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillStyle = config.colors.text;
-
-            // Icône de perturbation
-            if (e.excludeTemp || (e.perturbations && Object.values(e.perturbations).some(v => v))) {
-                let icon = '🚫';
-                if (e.perturbations) {
-                    if (e.perturbations['p-sleep']) icon = '💤';
-                    else if (e.perturbations['p-alcohol']) icon = '🍷';
-                    else if (e.perturbations['p-illness']) icon = '🤒';
-                    else if (e.perturbations['p-stress']) icon = '⚡';
-                    else if (e.perturbations['p-late']) icon = '⏰';
-										else if (e.perturbations['p-love']) icon = '❤️';
-                }
-                ctx.fillText(icon, xCenter, yGlaire1);
-            }
-
-            // Ligne sensation
-            const hasSensationEntry = 'mucusSensation' in e;
-            if (hasSensationEntry) {
-                if (e.mucusSensation === 'rien') {
-                    // ∅ pour "rien observé"
-                    ctx.font = 'bold 13px sans-serif';
-                    ctx.fillStyle = '#888';
-                    ctx.fillText('∅', xCenter, yGlaire2);
-                } else if (e.mucusSensation && e.mucusSensation !== 'none') {
-                    let emoji = '';
-                    switch (e.mucusSensation) {
-												case 'sec':     emoji = '🌵'; break;
-												case 'humide':  emoji = '💧'; break;
-												case 'mouille': emoji = '💦'; break;
-										}
-                    ctx.font = '13px sans-serif';
-                    ctx.fillStyle = config.colors.text;
-                    if (emoji) ctx.fillText(emoji, xCenter, yGlaire2);
-                }
-            }
-
-            // Ligne aspect
-            const hasAspectEntry = 'mucusAspect' in e;
-            if (hasAspectEntry) {
-                if (e.mucusAspect === 'rien') {
-                    ctx.font = 'bold 13px sans-serif';
-                    ctx.fillStyle = '#888';
-                    ctx.fillText('∅', xCenter, yGlaire3);
-                } else if (e.mucusAspect && e.mucusAspect !== 'none') {
-                    let emoji = '';
-										switch (e.mucusAspect) {
-												case 'epais': emoji = '🥛'; break;
-												case 'clair': emoji = '🥚'; break;
-										}
-                    ctx.font = '13px sans-serif';
-                    ctx.fillStyle = config.colors.text;
-                    if (emoji) ctx.fillText(emoji, xCenter, yGlaire3);
-                }
-            }
-
-            // Code résultant (G+, G, h, t)
-            if (hasSensationEntry || hasAspectEntry) {
-                const code = CycleComputer.classifyMucus(e.mucusSensation, e.mucusAspect);
-                if (code && code !== '--') {
-                    ctx.font = 'bold 10px sans-serif';
-										const codeColors = {
-												'G+': '#c62828',
-												'G':  '#e65100',
-												'h':  '#1565c0',
-												'S':  '#757575',
-												'Ø':  '#888888'
-										};
-                    ctx.fillStyle = codeColors[code] || config.colors.text;
-                    ctx.fillText(code, xCenter, yGlaire4);
-                }
-            }
-
-            ctx.restore();
-
+      
             // ── TEMPÉRATURE ───────────────────────────────────────────────────
             const tempValid = e.temp && !e.excludeTemp;
 
@@ -581,38 +573,3 @@ export class PaperRenderer {
         ctx.restore();
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  Saignements (footer)
-    // ─────────────────────────────────────────────────────────────────────────
-    drawBleeding(cycle, entries, dayWidth, gridHeight) {
-        const { ctx, config } = this;
-        const bottomY = config.headerHeight + gridHeight;
-
-        ctx.font = '14px sans-serif';
-
-        entries.forEach(e => {
-            if (!e.bleeding || e.bleeding === 'none') return;
-
-            const cycleDay = this.getCycleDay(e.date, cycle.startDate);
-            const xCenter = config.paddingLeft + (cycleDay - 1) * dayWidth + dayWidth / 2;
-            const yBaseline = bottomY + 72;
-
-            let emoji = '';
-            switch (e.bleeding) {
-                case 'spotting': emoji = '💉'; break;
-                case 'light':    emoji = '🩸'; break;
-                case 'medium':   emoji = '🩸🩸'; break;
-                case 'heavy':    emoji = '🩸🩸🩸'; break;
-            }
-
-            ctx.save();
-            ctx.translate(xCenter, yBaseline);
-            ctx.rotate(-Math.PI / 2);
-            ctx.scale(0.45, 0.45);
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(emoji, 0, 0);
-            ctx.restore();
-        });
-    }
-}

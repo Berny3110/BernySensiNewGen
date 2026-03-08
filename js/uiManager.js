@@ -80,6 +80,7 @@ export class UIManager {
                 sensation: document.querySelectorAll('input[name="mucus-sensation"]'),
                 aspect: document.querySelectorAll('input[name="mucus-aspect"]'),
                 bleeding: document.querySelectorAll('input[name="bleeding"]'),
+								loveCheckbox: document.getElementById('p-love');
                 perturbations: [
                     document.getElementById('p-sleep'),
                     document.getElementById('p-alcohol'),
@@ -536,19 +537,22 @@ export class UIManager {
         }
     }
 
-    saveMisc() {
-        const entry = { date: this.dom.date.value };
-        if (this.dom.manualExclude) entry.excludeTemp = this.dom.manualExclude.checked;
-        
-        const perts = {};
-        this.dom.inputs.perturbations.forEach(p => {
-            if(p) perts[p.id] = p.checked;
-        });
-        entry.perturbations = perts;
+		saveMisc() {
+				const entry = { date: this.dom.date.value };
+				if (this.dom.manualExclude) entry.excludeTemp = this.dom.manualExclude.checked;
 
-        this.dm.saveEntry(entry);
-        this.refreshAll();
-    }
+				// On extrait "love" spécifiquement
+				if (this.dom.inputs.loveCheckbox) entry.love = this.dom.inputs.loveCheckbox.checked;
+
+				const perts = {};
+				this.dom.inputs.perturbations.forEach(p => {
+						if(p && p.id !== 'p-love') perts[p.id] = p.checked;
+				});
+				entry.perturbations = perts;
+
+				this.dm.saveEntry(entry);
+				this.refreshAll();
+		}
 
     // REFONTE : Gestion des cycles via tableau
     initCycleManager() {
@@ -701,6 +705,8 @@ export class UIManager {
         document.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
         this.dom.inputs.perturbations.forEach(p => { if(p) p.checked = false; });
         if(this.dom.manualExclude) this.dom.manualExclude.checked = false;
+				
+				if(this.dom.inputs.loveCheckbox) this.dom.inputs.loveCheckbox.checked = !!entry.love;
 
         if (entry) {
             // Saignements

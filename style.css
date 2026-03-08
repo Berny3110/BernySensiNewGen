@@ -735,26 +735,44 @@ select {
     /* Replacer le bouton Retour en haut à gauche du mode paysage */
     /* (Ce qui correspond physiquement au haut à droite du téléphone vertical) */
 		#full-screen-chart-overlay .overlay-header {
-						position: absolute;
-						/* "bottom" et "right" sur le tel vertical = "Top Right" en paysage */
-						bottom: 15px; 
-						right: 15px; 
-						width: auto;
-						height: auto;
-						z-index: 10001;
-						
-						/* On le fait pivoter sur lui-même pour que le texte soit horizontal */
-						transform: rotate(90deg);
-						transform-origin: center;
-				}
+				position: absolute;
+				/* "bottom" et "right" sur le tel vertical = "Top Right" en paysage */
+				bottom: 15px; 
+				right: 15px; 
+				width: auto;
+				height: auto;
+				z-index: 10001;
+				
+				/* On le fait pivoter sur lui-même pour que le texte soit horizontal */
+				transform: rotate(90deg);
+				transform-origin: center;
+		}
+		
+		.chart-overlay .overlay-header {
+				display: none; 
+		}
 
-				#btn-close-chart {
-						padding: 12px 20px;
-						background: var(--accent);
-						color: white;
-						border: none;
-						border-radius: 8px;
-						font-weight: bold;
-						box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-				}
+		#btn-close-chart {
+				position: fixed;
+				top: 15px;
+				right: 15px;
+				z-index: 1000;
+				background: rgba(0, 0, 0, 0.7); /* Fond sombre élégant */
+				color: white;
+				border: 1px solid rgba(255, 255, 255, 0.3);
+				border-radius: 20px;
+				padding: 8px 16px;
+				font-size: 14px;
+				backdrop-filter: blur(5px); /* Effet de flou derrière le bouton */
+		}
+
+		#btn-close-chart:hover {
+				background: rgba(60, 60, 60, 1);
+				transform: scale(1.05);
+		}
+
+		#btn-close-chart:active {
+				transform: scale(0.95);
+		}
 }
+

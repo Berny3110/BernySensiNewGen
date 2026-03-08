@@ -13,9 +13,6 @@
  * toujours de données propres, cohérentes et à jour.
  */
 
-
-
-
 export class DataManager {
     constructor() {
         this.STORAGE_KEY = 'sensitrack_v2';
@@ -167,39 +164,44 @@ export class DataManager {
     }
 
     // CORRECTION : Validation stricte et nettoyage des données
-    saveEntry(entryData) {
-        // Validation de la date
-        if (!entryData.date || entryData.date === '' || entryData.date === 'Invalid Date') {
-            console.error('Date invalide, sauvegarde annulée', entryData);
-            return false;
-        }
+		saveEntry(rawData) {
+						if (!rawData || !rawData.date) return false;
+						
+						const cleanData = { date: rawData.date };
+						
+						// J'ai remis TOUTES les clés nécessaires au fonctionnement de l'appli
+						const allowedKeys = [
+								'time', 
+								'temp', 
+								'excludeTemp', 
+								'mucusSensation', 
+								'mucusAspect', 
+								'bleeding', 
+								'perturbations', 
+								'notes', 
+								'love'
+						];
 
-        // Nettoyage : supprimer les clés undefined/null
-        const cleanData = {};
-        for (const [key, value] of Object.entries(entryData)) {
-            if (value !== undefined && value !== null && value !== '') {
-                cleanData[key] = value;
-            }
-        }
+						allowedKeys.forEach(key => {
+								if (rawData[key] !== undefined && rawData[key] !== null && rawData[key] !== '') {
+										cleanData[key] = rawData[key];
+								}
+						});
 
-        const cycle = this.getCurrentCycle();
-        const existingIndex = cycle.entries.findIndex(e => e.date === cleanData.date);
-        
-        if (existingIndex >= 0) {
-            // Fusion intelligente : ne pas écraser avec undefined
-            cycle.entries[existingIndex] = { 
-                ...cycle.entries[existingIndex], 
-                ...cleanData 
-            };
-        } else {
-            cycle.entries.push(cleanData);
-        }
-        
-        cycle.entries.sort((a, b) => new Date(a.date) - new Date(b.date));
-        this.saveData();
-        return true;
-    }
-
+						const cycle = this.getCurrentCycle();
+						const existingIndex = cycle.entries.findIndex(e => e.date === cleanData.date);
+						
+						if (existingIndex >= 0) {
+								cycle.entries[existingIndex] = { ...cycle.entries[existingIndex], ...cleanData };
+						} else {
+								cycle.entries.push(cleanData);
+						}
+						
+						cycle.entries.sort((a, b) => new Date(a.date) - new Date(b.date));
+						this.saveData();
+						return true;
+				}
+				
     deleteEntry(date) {
         const cycle = this.getCurrentCycle();
         cycle.entries = cycle.entries.filter(e => e.date !== date);
