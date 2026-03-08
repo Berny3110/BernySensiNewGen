@@ -778,14 +778,18 @@ select {
 				display: none; 
 		}
 
-		/* Bouton Retour : positionné en haut à gauche visuellement (paysage) = bottom-left en coordonnées portrait */
+		/* Bouton Retour : le canvas est pivoté +90°, donc on pivote le bouton -90°
+		   pour qu'il soit lisible. Visuellement en haut à gauche du paysage
+		   = haut gauche de l'écran portrait avec rotation inverse. */
 		#btn-close-chart {
 				position: fixed;
-				bottom: 15px;
+				top: 50%;
 				left: 15px;
-				top: auto;
 				right: auto;
+				bottom: auto;
 				z-index: 10001;
+				transform: rotate(-90deg) translateY(-50%);
+				transform-origin: left center;
 				background: rgba(0, 0, 0, 0.7);
 				color: white;
 				border: 1px solid rgba(255, 255, 255, 0.3);
@@ -794,15 +798,11 @@ select {
 				font-size: 14px;
 				backdrop-filter: blur(5px);
 				cursor: pointer;
-				transition: all 0.2s;
-		}
-
-		#btn-close-chart:hover {
-				background: rgba(60, 60, 60, 1);
-				transform: scale(1.05);
+				transition: background 0.2s;
+				white-space: nowrap;
 		}
 
 		#btn-close-chart:active {
-				transform: scale(0.95);
+				background: rgba(60, 60, 60, 1);
 		}
 }

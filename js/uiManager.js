@@ -52,6 +52,9 @@ export class UIManager {
             this.dom.btnValidateMucus.addEventListener('click', () => this.validateMucus());
         }
 
+        const btnMisc = document.getElementById('btn-validate-misc');
+        if(btnMisc) btnMisc.addEventListener('click', () => this.validateMisc());
+
         this.refreshAll();
     }
 
@@ -554,6 +557,17 @@ export class UIManager {
 				this.refreshAll();
 		}
 
+		validateMisc() {
+				this.saveMisc();
+				const btn = document.getElementById('btn-validate-misc');
+				if (btn) {
+						const originalText = btn.innerText;
+						btn.innerText = '✓ Enregistré !';
+						setTimeout(() => btn.innerText = originalText, 1000);
+				}
+				if (navigator.vibrate) navigator.vibrate(50);
+		}
+
     // REFONTE : Gestion des cycles via tableau
     initCycleManager() {
         const btnAddCycle = document.getElementById('btn-add-cycle-main');
@@ -783,10 +797,12 @@ export class UIManager {
                 details.push(bleedMap[e.bleeding] || e.bleeding);
             }
 
+            if (e.love) details.push('❤️');
+
             const dateFr = new Date(e.date).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short', year: 'numeric'});
 
             return `
-            <li class="history-item">
+            <li class="history-item" data-date="${e.date}" style="cursor:pointer;">
                 <div>
                     <div style="font-weight: 700; color: var(--primary); margin-bottom: 4px;">${dateFr}</div>
                     <div style="font-size: 0.9rem; color: #666;">${details.join(' • ')}</div>
@@ -795,8 +811,29 @@ export class UIManager {
             </li>`;
         }).join('');
 
+        list.querySelectorAll('.history-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                // Si clic sur la croix, ne pas naviguer
+                if (e.target.classList.contains('btn-delete-entry')) return;
+                
+                const date = item.dataset.date;
+                // Mettre la date dans le champ global
+                this.dom.date.value = date;
+                // Charger les données de cette date
+                this.loadDataForCurrentDate();
+                // Basculer vers l'onglet Température
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                const tempBtn = document.querySelector('.tab-btn[data-target="temp-panel"]');
+                if (tempBtn) tempBtn.classList.add('active');
+                const tempPanel = document.getElementById('temp-panel');
+                if (tempPanel) tempPanel.classList.add('active');
+            });
+        });
+
         list.querySelectorAll('.btn-delete-entry').forEach(btn => {
             btn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 const dateToDelete = e.target.dataset.date;
                 if(confirm("Supprimer cette entrée ?")) {
                     this.dm.deleteEntry(dateToDelete);
