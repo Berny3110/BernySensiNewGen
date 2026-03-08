@@ -229,17 +229,8 @@ export class PaperRenderer {
             ctx.fillStyle = config.colors.bgOvulation;
             ctx.fillRect(xOvu, config.headerHeight, dayWidth, gridHeight);
             
-            // J+1 à J+3 (rose)
-            for (let offset = 1; offset <= 3; offset++) {
-                const d = ovuDay + offset;
-                if (d > maxCycleDay) break;
-                const x = config.paddingLeft + (d - 1) * dayWidth;
-                ctx.fillStyle = config.colors.bgPostOv1_3;
-                ctx.fillRect(x, config.headerHeight, dayWidth, gridHeight);
-            }
-            
-            // Phase infertile (bleu)
-            const infertileStart = ovuDay + 4;
+            // Phase infertile (bleu) — commence dès J+1 après ovulation
+            const infertileStart = ovuDay + 1;
             if (infertileStart <= maxCycleDay) {
                 for (let d = infertileStart; d <= maxCycleDay; d++) {
                     const x = config.paddingLeft + (d - 1) * dayWidth;
@@ -445,10 +436,6 @@ export class PaperRenderer {
                 ctx.lineTo(xPeak, config.headerHeight + gridHeight);
                 ctx.stroke();
                 ctx.setLineDash([]);
-                ctx.font = 'bold 11px sans-serif';
-                ctx.fillStyle = config.colors.peak;
-                ctx.textAlign = 'center';
-                ctx.fillText('P', xPeak, config.headerHeight - 52);
                 ctx.restore();
             }
         }
