@@ -549,7 +549,7 @@ export class UIManager {
 						if(p && p.id !== 'p-love') perts[p.id] = p.checked;
 				});
 				entry.perturbations = perts;
-
+				if(Object.keys(perts).length > 0) entry.perturbations = perts;
 				this.dm.saveEntry(entry);
 				this.refreshAll();
 		}

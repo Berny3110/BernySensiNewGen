@@ -732,38 +732,26 @@ select {
         display: block;
     }
 
-    /* Replacer le bouton Retour en haut à gauche du mode paysage */
-    /* (Ce qui correspond physiquement au haut à droite du téléphone vertical) */
-		#full-screen-chart-overlay .overlay-header {
-				position: absolute;
-				/* "bottom" et "right" sur le tel vertical = "Top Right" en paysage */
-				bottom: 15px; 
-				right: 15px; 
-				width: auto;
-				height: auto;
-				z-index: 10001;
-				
-				/* On le fait pivoter sur lui-même pour que le texte soit horizontal */
-				transform: rotate(90deg);
-				transform-origin: center;
-		}
-		
+		/* Masquer l'overlay-header par défaut */
 		.chart-overlay .overlay-header {
 				display: none; 
 		}
 
+		/* CORRECTION : Bouton Retour fixe en haut à droite du téléphone (= coin supérieur gauche en paysage visuel) */
 		#btn-close-chart {
 				position: fixed;
 				top: 15px;
 				right: 15px;
-				z-index: 1000;
-				background: rgba(0, 0, 0, 0.7); /* Fond sombre élégant */
+				z-index: 10001;
+				background: rgba(0, 0, 0, 0.7);
 				color: white;
 				border: 1px solid rgba(255, 255, 255, 0.3);
 				border-radius: 20px;
 				padding: 8px 16px;
 				font-size: 14px;
-				backdrop-filter: blur(5px); /* Effet de flou derrière le bouton */
+				backdrop-filter: blur(5px);
+				cursor: pointer;
+				transition: all 0.2s;
 		}
 
 		#btn-close-chart:hover {
@@ -775,4 +763,5 @@ select {
 				transform: scale(0.95);
 		}
 }
+
 
