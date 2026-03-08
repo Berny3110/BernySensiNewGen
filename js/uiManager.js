@@ -80,7 +80,7 @@ export class UIManager {
                 sensation: document.querySelectorAll('input[name="mucus-sensation"]'),
                 aspect: document.querySelectorAll('input[name="mucus-aspect"]'),
                 bleeding: document.querySelectorAll('input[name="bleeding"]'),
-								loveCheckbox: document.getElementById('p-love');
+								loveCheckbox: document.getElementById('p-love'),
                 perturbations: [
                     document.getElementById('p-sleep'),
                     document.getElementById('p-alcohol'),

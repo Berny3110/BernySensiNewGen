@@ -573,3 +573,4 @@ export class PaperRenderer {
         ctx.restore();
     }
 
+}
