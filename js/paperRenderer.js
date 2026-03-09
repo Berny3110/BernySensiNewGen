@@ -17,8 +17,8 @@ export class PaperRenderer {
 
         this.config = {
             dayWidth: 32,
-            headerHeight: 70,
-            footerHeight: 180, // Augmenté pour faire de la place
+            headerHeight: 40,
+            footerHeight: 180, 
             tempMin: 36.0,
             tempMax: 37.0,
             gridHeight: 300,
@@ -204,14 +204,6 @@ export class PaperRenderer {
         // Fond
         ctx.fillStyle = config.colors.background;
         ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-        // Titre
-        ctx.save();
-        ctx.font = 'bold 14px sans-serif';
-        ctx.fillStyle = config.colors.text;
-        ctx.textAlign = 'left';
-        ctx.fillText(`Cycle #${cycle.id || '?'} — ${cycle.startDate || '?'}`, config.paddingLeft, 25);
-        ctx.restore();
 
         // Colonnes colorées (phases)
         if (analysis && analysis.ovulationDayIndex !== null) {
