@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v25'; // Incrémenté pour forcer le rechargement du cache
+const CACHE_VERSION = 'v26'; // Incrémenté pour forcer le rechargement du cache
 const CACHE_NAME = `sensitrack-cache-${CACHE_VERSION}`;
 
 const ASSETS = [
