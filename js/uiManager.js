@@ -781,7 +781,10 @@ export class UIManager {
         
         list.innerHTML = entries.map(e => {
             let details = [];
-            if (e.temp) details.push(`🌡️ ${e.temp}°C`);
+            if (e.temp) {
+                const tempStr = e.time ? `🌡️ ${e.temp}°C (${e.time})` : `🌡️ ${e.temp}°C`;
+                details.push(tempStr);
+            }
             
 						const mucusCode = CycleComputer.classifyMucus(e.mucusSensation, e.mucusAspect);
 						// On passe de '--' à 'Ø'
