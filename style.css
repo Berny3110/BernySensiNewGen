@@ -783,13 +783,13 @@ select {
 		   = haut gauche de l'écran portrait avec rotation inverse. */
 		#btn-close-chart {
 				position: fixed;
-				top: 50%;
-				left: 15px;
-				right: auto;
+				top: 15px;      /* Fixé au nord physique du téléphone */
+				right: 15px;    /* Fixé à l'est physique du téléphone */
+				left: auto;
 				bottom: auto;
 				z-index: 10001;
-				transform: rotate(-90deg) translateY(-50%);
-				transform-origin: left center;
+				transform: rotate(90deg); /* On pivote dans le même sens que le canvas */
+				transform-origin: center center;
 				background: rgba(0, 0, 0, 0.7);
 				color: white;
 				border: 1px solid rgba(255, 255, 255, 0.3);
