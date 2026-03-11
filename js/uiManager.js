@@ -176,7 +176,7 @@ export class UIManager {
         updateDisplay();
     }
 
-    validateTemperature() {
+		validateTemperature() {
         const temp = parseFloat(`${this.tempInt}.${this.tempDec1}${this.tempDec2}`);
         const entry = {
             date: this.dom.date.value,
@@ -186,6 +186,15 @@ export class UIManager {
         
         const success = this.dm.saveEntry(entry);
         if (success) {
+            // Effet visuel et haptique
+            const btn = document.getElementById('btn-validate-temp');
+            if (btn) {
+                const originalText = btn.innerText;
+                btn.innerText = "✓ Enregistré !";
+                setTimeout(() => btn.innerText = originalText, 1000);
+            }
+            if (navigator.vibrate) navigator.vibrate(50);
+            
             this.refreshAll();
         } else {
             alert('Erreur : date invalide');
@@ -541,32 +550,39 @@ export class UIManager {
     }
 
 		saveMisc() {
-				const entry = { date: this.dom.date.value };
-				if (this.dom.manualExclude) entry.excludeTemp = this.dom.manualExclude.checked;
+        const entry = { date: this.dom.date.value };
+        if (this.dom.manualExclude) entry.excludeTemp = this.dom.manualExclude.checked;
 
-				// On extrait "love" spécifiquement
-				if (this.dom.inputs.loveCheckbox) entry.love = this.dom.inputs.loveCheckbox.checked;
+        if (this.dom.inputs.loveCheckbox) entry.love = this.dom.inputs.loveCheckbox.checked;
 
-				const perts = {};
-				this.dom.inputs.perturbations.forEach(p => {
-						if(p && p.id !== 'p-love') perts[p.id] = p.checked;
-				});
-				entry.perturbations = perts;
-				if(Object.keys(perts).length > 0) entry.perturbations = perts;
-				this.dm.saveEntry(entry);
-				this.refreshAll();
-		}
+        const perts = {};
+        this.dom.inputs.perturbations.forEach(p => {
+            if(p && p.id !== 'p-love') perts[p.id] = p.checked;
+        });
+        if(Object.keys(perts).length > 0) entry.perturbations = perts;
+        
+        // On retourne le résultat pour que validateMisc sache si ça a marché
+        return this.dm.saveEntry(entry);
+    }
 
-		validateMisc() {
-				this.saveMisc();
-				const btn = document.getElementById('btn-validate-misc');
-				if (btn) {
-						const originalText = btn.innerText;
-						btn.innerText = '✓ Enregistré !';
-						setTimeout(() => btn.innerText = originalText, 1000);
-				}
-				if (navigator.vibrate) navigator.vibrate(50);
-		}
+    validateMisc() {
+        const success = this.saveMisc();
+        
+        if (success) {
+            // Effet visuel et haptique
+            const btn = document.getElementById('btn-validate-misc');
+            if (btn) {
+                const originalText = btn.innerText;
+                btn.innerText = '✓ Enregistré !';
+                setTimeout(() => btn.innerText = originalText, 1000);
+            }
+            if (navigator.vibrate) navigator.vibrate(50);
+            
+            this.refreshAll();
+        } else {
+            alert('Erreur : date invalide');
+        }
+    }
 
     // REFONTE : Gestion des cycles via tableau
     initCycleManager() {

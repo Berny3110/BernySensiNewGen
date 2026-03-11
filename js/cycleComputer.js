@@ -279,20 +279,26 @@ export class CycleComputer {
             }
         }
 
-        // ── 4. Jour d'ovulation ───────────────────────────────────────────────
+				// ── 4. Jour d'ovulation (Confirmation de la période infertile) ────────
         //
-        // Les deux indicateurs doivent être présents.
-        // Ovulation = le PLUS TARDIF des deux confirmations :
-        //   - Mucus  → mucusPeakIndex   (le jour du pic lui-même)
-        //   - Température → tempShiftConfirmedIndex
-        //
-        // NOTE : on prend max(peakIdx, confirmIdx), PAS peakIdx+3.
+        // Sensiplan : Les deux indicateurs doivent être présents.
+        // L'infertilité commence au soir du PLUS TARDIF des deux confirmations :
+        //   - Température → tempShiftConfirmedIndex (3ème ou 4ème jour haut)
+        //   - Mucus  → mucusPeakIndex + 3 (Le 3ème jour APRÈS le jour du pic)
 
         if (result.mucusPeakIndex !== null && result.tempShiftConfirmedIndex !== null) {
-            result.ovulationDayIndex = Math.max(
-                result.mucusPeakIndex,
-                result.tempShiftConfirmedIndex
-            );
+            const mucusConfirmationIndex = result.mucusPeakIndex + 3;
+            
+            // On s'assure qu'on a bien enregistré au moins 3 jours après le pic
+            if (mucusConfirmationIndex < n) {
+                result.ovulationDayIndex = Math.max(
+                    mucusConfirmationIndex,
+                    result.tempShiftConfirmedIndex
+                );
+            } else {
+                // S'il n'y a pas encore 3 jours d'enregistrés après le pic, l'ovulation n'est pas confirmée
+                result.ovulationDayIndex = null;
+            }
         }
 
         return result;
