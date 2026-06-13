@@ -71,14 +71,14 @@ export class CycleComputer {
 						return 'Ø';
 				}
 
+
 				static getMucusWeight(code) {
-						// On met à jour les clés pour matcher les vraies lettres de la méthode
-						return { 'G+': 4, 'G': 3, 'h': 2, 'S': 1, 'Ø': 0 }[code] ?? 0;
+					// Poids alignés avec les codes renvoyés par classifyMucus()
+					// G+ (max) -> 4, G -> 3, h -> 2, S -> 1, Ø -> 0
+					return ({ 'G+': 4, 'G': 3, 'h': 2, 'S': 1, 'Ø': 0 })[code] ?? 0;
 				}
 
-    static getMucusWeight(code) {
-        return { 'G+': 4, 'G': 3, 'h': 2, 's': 1, '--': 0 }[code] ?? 0;
-    }
+
 
     // ─────────────────────────────────────────────────────────────────────────
     /**

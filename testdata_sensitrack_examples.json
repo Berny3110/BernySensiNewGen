@@ -1,0 +1,156 @@
+{
+    "settings": {
+      "theme": "dark"
+    },
+    "cycles": [
+      {
+        "id": 1,
+        "startDate": "2026-05-01",
+        "entries": [
+          { "date": "2026-05-01", "time": "07:10", "temp": 36.10, "excludeTemp": false, "bleeding": "light" },
+          { "date": "2026-05-02", "time": "07:11", "temp": 36.05, "excludeTemp": false, "bleeding": "light" },
+          { "date": "2026-05-03", "time": "07:12", "temp": 36.00, "excludeTemp": false, "bleeding": "none" },
+          { "date": "2026-05-04", "time": "07:12", "temp": 36.02, "excludeTemp": false, "bleeding": "none" },
+          { "date": "2026-05-05", "time": "07:13", "temp": 36.03, "excludeTemp": false, "bleeding": "none" },
+          { "date": "2026-05-06", "time": "07:13", "temp": 36.01, "excludeTemp": false, "bleeding": "none" },
+          { "date": "2026-05-07", "time": "07:14", "temp": 36.04, "excludeTemp": false, "mucusSensation": "sec", "mucusAspect": "rien" },
+          { "date": "2026-05-08", "time": "07:14", "temp": 36.05, "excludeTemp": false, "mucusSensation": "humide", "mucusAspect": "epais" },
+          { "date": "2026-05-09", "time": "07:15", "temp": 36.06, "excludeTemp": false, "mucusSensation": "humide", "mucusAspect": "clair" },
+          { "date": "2026-05-10", "time": "07:15", "temp": 36.07, "excludeTemp": false, "mucusSensation": "mouille", "mucusAspect": "clair" },
+          { "date": "2026-05-11", "time": "07:16", "temp": 36.08, "excludeTemp": false, "mucusSensation": "mouille", "mucusAspect": "epais" },
+          { "date": "2026-05-12", "time": "07:16", "temp": 36.09, "excludeTemp": false, "mucusSensation": "humide", "mucusAspect": "epais" },
+          { "date": "2026-05-13", "time": "07:17", "temp": 36.25, "excludeTemp": false },
+          { "date": "2026-05-14", "time": "07:17", "temp": 36.30, "excludeTemp": false },
+          { "date": "2026-05-15", "time": "07:18", "temp": 36.35, "excludeTemp": false },
+          { "date": "2026-05-16", "time": "07:18", "temp": 36.40, "excludeTemp": false },
+          { "date": "2026-05-17", "time": "07:19", "temp": 36.38, "excludeTemp": false },
+          { "date": "2026-05-18", "time": "07:19", "temp": 36.41, "excludeTemp": false }
+        ]
+      },
+      {
+        "id": 2,
+        "startDate": "2026-06-01",
+        "entries": [
+          { "date": "2026-06-01", "time": "07:10", "temp": 36.20, "excludeTemp": false, "bleeding": "heavy" },
+          { "date": "2026-06-02", "time": "07:11", "temp": 36.15, "excludeTemp": false, "bleeding": "light" },
+          { "date": "2026-06-03", "time": "07:12", "temp": 36.12, "excludeTemp": false, "bleeding": "none" },
+          { "date": "2026-06-04", "time": "07:12", "temp": 36.10, "excludeTemp": true, "notes": "Perturbation : exclure cette mesure" },
+          { "date": "2026-06-05", "time": "07:13", "temp": 36.11, "excludeTemp": false },
+          { "date": "2026-06-06", "time": "07:13", "temp": 36.12, "excludeTemp": false },
+          { "date": "2026-06-07", "time": "07:14", "temp": 36.13, "excludeTemp": false, "mucusSensation": "humide", "mucusAspect": "clair" },
+          { "date": "2026-06-08", "time": "07:14", "temp": 36.14, "excludeTemp": false, "mucusSensation": "mouille", "mucusAspect": "clair" },
+          { "date": "2026-06-09", "time": "07:15", "temp": 36.15, "excludeTemp": false, "mucusSensation": "mouille", "mucusAspect": "rien" },
+          { "date": "2026-06-10", "time": "07:15", "temp": 36.16, "excludeTemp": false, "mucusSensation": "humide", "mucusAspect": "epais" },
+
+          { "date": "2026-06-11", "time": "07:16", "temp": 36.17, "excludeTemp": false },
+          { "date": "2026-06-12", "time": "07:17", "temp": 36.18, "excludeTemp": false },
+          { "date": "2026-06-13", "time": "07:17", "temp": 36.22, "excludeTemp": false },
+          { "date": "2026-06-14", "time": "07:18", "temp": 36.21, "excludeTemp": false },
+          { "date": "2026-06-15", "time": "07:18", "temp": 36.30, "excludeTemp": false },
+          { "date": "2026-06-16", "time": "07:19", "temp": 36.31, "excludeTemp": false },
+          { "date": "2026-06-17", "time": "07:19", "temp": 36.33, "excludeTemp": false }
+        ]
+      },
+      {
+        "id": 3,
+        "name": "Test Exception 1 (Attente 4ème température haute)",
+        "startDate": "2026-07-01",
+        "entries": [
+          { "date": "2026-07-01", "time": "07:00", "temp": 36.40, "excludeTemp": false, "bleeding": "heavy" },
+          { "date": "2026-07-02", "time": "07:00", "temp": 36.35, "excludeTemp": false, "bleeding": "light" },
+          { "date": "2026-07-03", "time": "07:00", "temp": 36.30, "excludeTemp": false },
+          { "date": "2026-07-04", "time": "07:00", "temp": 36.40, "excludeTemp": false },
+          { "date": "2026-07-05", "time": "07:00", "temp": 36.35, "excludeTemp": false },
+          { "date": "2026-07-06", "time": "07:00", "temp": 36.40, "excludeTemp": false }, 
+          { "date": "2026-07-07", "time": "07:00", "temp": 36.30, "excludeTemp": false, "mucusSensation": "humide", "mucusAspect": "epais" },
+          { "date": "2026-07-08", "time": "07:00", "temp": 36.35, "excludeTemp": false, "mucusSensation": "mouille", "mucusAspect": "clair" }, 
+          { "date": "2026-07-09", "time": "07:00", "temp": 36.40, "excludeTemp": false, "mucusSensation": "humide", "mucusAspect": "epais" },
+          { "date": "2026-07-10", "time": "07:00", "temp": 36.35, "excludeTemp": false, "mucusSensation": "sec", "mucusAspect": "rien" },
+          { "date": "2026-07-11", "time": "07:00", "temp": 36.55, "excludeTemp": false }, 
+          { "date": "2026-07-12", "time": "07:00", "temp": 36.55, "excludeTemp": false }, 
+          { "date": "2026-07-13", "time": "07:00", "temp": 36.50, "excludeTemp": false }, 
+          { "date": "2026-07-14", "time": "07:00", "temp": 36.45, "excludeTemp": false }, 
+          { "date": "2026-07-15", "time": "07:00", "temp": 36.60, "excludeTemp": false }
+        ]
+      },
+      {
+        "id": 4,
+        "name": "Test Exception 2 (Retrait thermique toléré sous la ligne)",
+        "startDate": "2026-08-01",
+        "entries": [
+          { "date": "2026-08-01", "time": "07:15", "temp": 36.20, "excludeTemp": false, "bleeding": "heavy" },
+          { "date": "2026-08-02", "time": "07:15", "temp": 36.20, "excludeTemp": false, "bleeding": "light" },
+          { "date": "2026-08-03", "time": "07:15", "temp": 36.15, "excludeTemp": false },
+          { "date": "2026-08-04", "time": "07:15", "temp": 36.25, "excludeTemp": false },
+          { "date": "2026-08-05", "time": "07:15", "temp": 36.20, "excludeTemp": false },
+          { "date": "2026-08-06", "time": "07:15", "temp": 36.25, "excludeTemp": false }, 
+          { "date": "2026-08-07", "time": "07:15", "temp": 36.20, "excludeTemp": false, "mucusSensation": "mouille", "mucusAspect": "clair" }, 
+          { "date": "2026-08-08", "time": "07:15", "temp": 36.15, "excludeTemp": false, "mucusSensation": "humide", "mucusAspect": "epais" },
+          { "date": "2026-08-09", "time": "07:15", "temp": 36.20, "excludeTemp": false, "mucusSensation": "sec", "mucusAspect": "rien" },
+          { "date": "2026-08-10", "time": "07:15", "temp": 36.40, "excludeTemp": false }, 
+          { "date": "2026-08-11", "time": "07:15", "temp": 36.20, "excludeTemp": false }, 
+          { "date": "2026-08-12", "time": "07:15", "temp": 36.45, "excludeTemp": false }, 
+          { "date": "2026-08-13", "time": "07:15", "temp": 36.50, "excludeTemp": false }, 
+          { "date": "2026-08-14", "time": "07:15", "temp": 36.45, "excludeTemp": false }
+        ]
+      },
+      {
+        "id": 5,
+        "name": "Test Température Exclue (Fausse montée due à une perturbation)",
+        "startDate": "2026-09-01",
+        "entries": [
+          { "date": "2026-09-01", "time": "07:05", "temp": 36.10, "excludeTemp": false, "bleeding": "heavy" },
+          { "date": "2026-09-02", "time": "07:05", "temp": 36.15, "excludeTemp": false, "bleeding": "medium" },
+          { "date": "2026-09-03", "time": "07:05", "temp": 36.10, "excludeTemp": false },
+          { "date": "2026-09-04", "time": "07:05", "temp": 36.12, "excludeTemp": false },
+          { "date": "2026-09-05", "time": "07:05", "temp": 36.55, "excludeTemp": true, "notes": "Fièvre / Alcool la veille - Doit être ignorée" },
+          { "date": "2026-09-06", "time": "07:05", "temp": 36.14, "excludeTemp": false },
+          { "date": "2026-09-07", "time": "07:05", "temp": 36.11, "excludeTemp": false }, 
+          { "date": "2026-09-08", "time": "07:05", "temp": 36.15, "excludeTemp": false, "mucusSensation": "mouille", "mucusAspect": "clair" }, 
+          { "date": "2026-09-09", "time": "07:05", "temp": 36.13, "excludeTemp": false, "mucusSensation": "humide", "mucusAspect": "epais" },
+          { "date": "2026-09-10", "time": "07:05", "temp": 36.10, "excludeTemp": false, "mucusSensation": "sec", "mucusAspect": "rien" },
+          { "date": "2026-09-11", "time": "07:05", "temp": 36.35, "excludeTemp": false }, 
+          { "date": "2026-09-12", "time": "07:05", "temp": 36.40, "excludeTemp": false }, 
+          { "date": "2026-09-13", "time": "07:05", "temp": 36.40, "excludeTemp": false }, 
+          { "date": "2026-09-14", "time": "07:05", "temp": 36.45, "excludeTemp": false }
+        ]
+      },
+      {
+        "id": 6,
+        "name": "Test Limite Mucus (G+ tardif après confirmation)",
+        "startDate": "2026-10-01",
+        "entries": [
+          { "date": "2026-10-01", "time": "07:20", "temp": 36.20, "excludeTemp": false, "bleeding": "heavy" },
+          { "date": "2026-10-02", "time": "07:20", "temp": 36.20, "excludeTemp": false, "bleeding": "light" },
+          { "date": "2026-10-03", "time": "07:20", "temp": 36.15, "excludeTemp": false },
+          { "date": "2026-10-04", "time": "07:20", "temp": 36.20, "excludeTemp": false },
+          { "date": "2026-10-05", "time": "07:20", "temp": 36.15, "excludeTemp": false },
+          { "date": "2026-10-06", "time": "07:20", "temp": 36.20, "excludeTemp": false }, 
+          { "date": "2026-10-07", "time": "07:20", "temp": 36.20, "excludeTemp": false, "mucusSensation": "mouille", "mucusAspect": "clair" }, 
+          { "date": "2026-10-08", "time": "07:20", "temp": 36.15, "excludeTemp": false, "mucusSensation": "humide", "mucusAspect": "epais" },
+          { "date": "2026-10-09", "time": "07:20", "temp": 36.20, "excludeTemp": false, "mucusSensation": "sec", "mucusAspect": "rien" },
+          { "date": "2026-10-10", "time": "07:20", "temp": 36.35, "excludeTemp": false }, 
+          { "date": "2026-10-11", "time": "07:20", "temp": 36.40, "excludeTemp": false }, 
+          { "date": "2026-10-12", "time": "07:20", "temp": 36.45, "excludeTemp": false }, 
+          { "date": "2026-10-13", "time": "07:20", "temp": 36.40, "excludeTemp": false, "mucusSensation": "mouille", "mucusAspect": "clair" },
+          { "date": "2026-10-14", "time": "07:20", "temp": 36.45, "excludeTemp": false, "mucusSensation": "sec", "mucusAspect": "rien" }
+        ]
+      },
+      {
+        "id": 7,
+        "name": "Test Cycle En Cours (Tentative en cours de détection)",
+        "startDate": "2026-11-01",
+        "entries": [
+          { "date": "2026-11-01", "time": "07:10", "temp": 36.10, "excludeTemp": false, "bleeding": "heavy" },
+          { "date": "2026-11-02", "time": "07:10", "temp": 36.15, "excludeTemp": false, "bleeding": "light" },
+          { "date": "2026-11-03", "time": "07:10", "temp": 36.10, "excludeTemp": false },
+          { "date": "2026-11-04", "time": "07:10", "temp": 36.12, "excludeTemp": false },
+          { "date": "2026-11-05", "time": "07:10", "temp": 36.14, "excludeTemp": false },
+          { "date": "2026-11-06", "time": "07:10", "temp": 36.11, "excludeTemp": false }, 
+          { "date": "2026-11-07", "time": "07:10", "temp": 36.15, "excludeTemp": false, "mucusSensation": "mouille", "mucusAspect": "clair" },
+          { "date": "2026-11-08", "time": "07:10", "temp": 36.35, "excludeTemp": false }, 
+          { "date": "2026-11-09", "time": "07:10", "temp": 36.40, "excludeTemp": false }
+        ]
+      }
+    ]
+  }
