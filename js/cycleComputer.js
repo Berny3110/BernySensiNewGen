@@ -142,103 +142,141 @@ export class CycleComputer {
         // g) Exceptions 1 et 2 non cumulables
         // h) Si la séquence échoue, on repart de la prochaine candidate
 
-				const vt = []; 
-				for (let i = 0; i < n; i++) {
-						if (validTemp(entries[i])) vt.push({ entryIdx: i, temp: round05(entries[i].temp) });
-				}
+
+				// Option A (doc_technique.md) : si excludeTemp est vrai,
+				// on ignore le jour dans les calculs de température, mais
+				// on ne « casse » pas la consécutivité temporelle (les indices restent ceux des jours réels).
+				//
+				// Implémentation :
+				// - on garde un balayage sur tous les jours (0..n-1)
+				// - on maintient une liste des 6 températures basses valides précédentes
+				// - quand on trouve une haute candidate (> max des 6 basses), on tente de construire
+				//   3 hautes « successives » en avançant jour par jour (en ignorant les excludeTemp)
+				// - exception 2 : au plus une fois où on retombe sur/ sous la ligne de référence entre les hautes
+				// - exception 1 : si la 3e haute ne satisfait pas +0.20, on attend une 4e haute (> coverLine)
+
+				const roundEntriesTemp = i => round05(entries[i].temp);
+				const tempAt = i => {
+						if (!validTemp(entries[i])) return null;
+						return roundEntriesTemp(i);
+				};
 
 				let shiftOk = false;
-				let ss = 6; 
-				let tentative = null; // NOUVEAU : pour stocker l'analyse en cours
+				let tentative = null;
 
-				while (ss < vt.length && !shiftOk) {
-						const refGroup = vt.slice(ss - 6, ss);
-						const maxRef   = Math.max(...refGroup.map(r => r.temp));
-						const cand     = vt[ss];
+				// On cherche une première haute à partir du moment où on a au moins 6 basses valides avant.
+				// `i` = jour candidat de haute
+				for (let i = 0; i < n && !shiftOk; i++) {
+						// Build window of last 6 valid temps strictly before i
+						const lows = [];
+						for (let j = i - 1; j >= 0 && lows.length < 6; j--) {
+									const t = tempAt(j);
+									if (t !== null) lows.unshift({ entryIdx: j, temp: t });
+						}
+						if (lows.length < 6) continue;
 
-						if (cand.temp <= maxRef) { ss++; continue; }
+						const maxRef = Math.max(...lows.map(r => r.temp));
+						const candTemp = tempAt(i);
+						if (candTemp === null) continue;
+						if (candTemp <= maxRef) continue; // 1ère haute strictement > max des 6 précédentes
 
-						const highs    = [cand.entryIdx];
-						let ex2Used    = false;
+						// Tentative construction des 3 hautes
+						const highs = [i];
 						const retreats = [];
-						let failed     = false;
-						let vi         = ss + 1;
+						let ex2Used = false;
+						let failed = false;
+						let sawThirdIndex = null;
 
-						while (vi < vt.length && highs.length < 3) {
-								const cur = vt[vi];
-								if (cur.temp > maxRef) {
-										highs.push(cur.entryIdx);
-								} else {
-										if (!ex2Used) {
-												ex2Used = true;
-												retreats.push(cur.entryIdx);
-										} else {
-												failed = true;
-												break;
-										}
-								}
-								vi++;
+						let day = i + 1;
+						while (day < n && highs.length < 3) {
+									const t = tempAt(day);
+									if (t === null) {
+											day++;
+											continue; // exclu => on l'ignore
+									}
+
+									if (t > maxRef) {
+											highs.push(day);
+											if (highs.length === 3) sawThirdIndex = day;
+											day++;
+											continue;
+									}
+
+									// t <= maxRef => retrait (exception 2)
+									if (!ex2Used) {
+											ex2Used = true;
+											retreats.push(day);
+											day++;
+											continue;
+									}
+
+									// 2ème retrait => échec de tentative
+									failed = true;
+									break;
 						}
 
-						// NOUVEAU : Sauvegarde de la tentative en cours si elle n'a pas échoué
 						if (!failed) {
-								tentative = {
+									// Sauvegarde tentative si on n'a pas encore rejeté
+									tentative = {
 										coverLine: maxRef,
-										lowTempIndices: refGroup.map(r => r.entryIdx),
+										lowTempIndices: lows.map(r => r.entryIdx),
 										highTempIndices: [...highs],
 										retreatIndices: [...retreats],
 										exception2Used: ex2Used
-								};
+									};
 						}
 
-						if (failed || highs.length < 3) { 
-								if (vi === vt.length) break; // Fin des données, on garde la tentative visible
-								ss++; 
-								continue; 
+						if (failed) continue;
+						if (highs.length < 3) {
+									// pas assez de hautes avant fin => on laisse la tentative (comme dans l'ancien code)
+									continue;
 						}
 
-						const t3 = round05(entries[highs[2]].temp);
+						// Contrôle +0.20 au 3e jour haut
+						const t3 = tempAt(highs[2]);
+						if (t3 !== null && t3 >= maxRef + 0.20) {
+									result.coverLine = maxRef;
+									result.lowTempIndices = lows.map(r => r.entryIdx);
+									result.highTempIndices = highs.slice(0, 3);
+									result.retreatIndices = retreats;
+									result.exception2Used = ex2Used;
+									result.tempShiftConfirmedIndex = highs[2];
+									shiftOk = true;
+									break;
+						}
 
-						if (t3 >= maxRef + 0.20) {
-								// ✅ Confirmation standard
-								result.coverLine              = maxRef;
-								result.lowTempIndices         = refGroup.map(r => r.entryIdx);
-								result.highTempIndices        = highs.slice(0, 3);
-								result.retreatIndices         = retreats;
-								result.exception2Used         = ex2Used;
-								result.tempShiftConfirmedIndex = highs[2];
-								shiftOk = true;
-						} else if (!ex2Used) {
-								// ── Exception 1 : on attend une 4e haute
-								let found1 = false;
-								if (vi < vt.length) {
-										if (vt[vi].temp > maxRef) {
-												result.coverLine              = maxRef;
-												result.lowTempIndices         = refGroup.map(r => r.entryIdx);
-												result.highTempIndices        = [...highs.slice(0, 3), vt[vi].entryIdx]; // On montre la 4ème
-												result.retreatIndices         = retreats;
-												result.exception1Used         = true;
-												result.tempShiftConfirmedIndex = vt[vi].entryIdx;
-												shiftOk  = true;
-												found1   = true;
-										}
-								} else {
-										break; // En attente du 4e jour dans le futur, on break pour garder la tentative visible
-								}
-								if (!found1) ss++;
-						} else {
-								ss++;
+						// Exception 1 : si la 3e n'atteint pas +0.20 et qu'on n'a pas déjà utilisé exception 2
+						if (!ex2Used) {
+									// Chercher une 4e haute STRICTEMENT > coverLine après le 3e haut
+									let found = false;
+									for (let k = highs[2] + 1; k < n; k++) {
+												const tk = tempAt(k);
+												if (tk === null) continue;
+												if (tk > maxRef) {
+													result.coverLine = maxRef;
+													result.lowTempIndices = lows.map(r => r.entryIdx);
+													result.highTempIndices = [...highs.slice(0, 3), k];
+													result.retreatIndices = retreats;
+													result.exception1Used = true;
+													result.tempShiftConfirmedIndex = k;
+													shiftOk = true;
+													found = true;
+													break;
+												}
+									}
+									if (found) break;
 						}
 				}
 
-				// NOUVEAU : Si la montée n'est pas encore confirmée mais qu'une tentative est en cours
+				// Si la montée n'est pas encore confirmée mais qu'une tentative existe
 				if (!shiftOk && tentative) {
 						result.coverLine = tentative.coverLine;
 						result.lowTempIndices = tentative.lowTempIndices;
 						result.highTempIndices = tentative.highTempIndices;
 						result.retreatIndices = tentative.retreatIndices;
-						// tempShiftConfirmedIndex reste null car l'ovulation n'est pas encore acquise
+						// tempShiftConfirmedIndex reste null
 				}
+
 
         // ── 3. Pic de glaire ──────────────────────────────────────────────────
         //
