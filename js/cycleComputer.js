@@ -278,46 +278,50 @@ export class CycleComputer {
 				}
 
 
-        // ── 3. Pic de glaire ──────────────────────────────────────────────────
+        // ── 3. Pic de glaire (P) ──────────────────────────────────────────────────
         //
-        // Recherche limitée aux entrées dont l'index ≤ tempShiftConfirmedIndex
-        // (un G+ apparaissant APRÈS la confirmation thermique est ignoré :
-        //  l'ovulation est déjà acquise, on ne remet pas le pic en cause)
+        // Doc_technique (convention) : P se note le SOIR du jour suivant la diminution.
+        // Pour éviter toute ambiguïté, on représente ici P par l’index du JOUR où la
+        // diminution (qualité < niveau maximal) est observée.
         //
-        // Parmi ces entrées, on cherche la DERNIÈRE occurrence du niveau max (G ou G+).
-        // Le marqueur P est affiché seulement si au moins un jour ultérieur
-        // (jusqu'à la fin du cycle) présente un niveau inférieur.
+        // Logique :
+        // - On limite la recherche du “dernier jour au niveau max” à ≤ tempShiftConfirmedIndex
+        //   (G+ après confirmation thermique ignoré)
+        // - Puis on cherche le premier jour ultérieur < maxW
+        //   => cet index devient result.mucusPeakIndex (soir associé au jour suivant).
 
         const mucusLimit = result.tempShiftConfirmedIndex !== null
             ? result.tempShiftConfirmedIndex
             : n - 1;
 
-        let maxW     = 0;
-        let peakLast = null; // dernier index ≤ mucusLimit avec le niveau maximal
+        let maxW = 0;
+        let peakDayLast = null; // dernier index ≤ mucusLimit avec la meilleure qualité
 
         for (let i = 0; i <= mucusLimit; i++) {
             const e = entries[i];
             if (!('mucusSensation' in e) && !('mucusAspect' in e)) continue;
             const code = CycleComputer.classifyMucus(e.mucusSensation, e.mucusAspect);
-            const w    = CycleComputer.getMucusWeight(code);
-            if (w >= 3 && w >= maxW) { maxW = w; peakLast = i; }
+            const w = CycleComputer.getMucusWeight(code);
+            if (w >= 3 && w >= maxW) {
+                maxW = w;
+                peakDayLast = i;
+            }
         }
 
-        if (peakLast !== null) {
-            // Confirmer le déclin : chercher un jour APRÈS peakLast avec qualité inférieure
-            // (on cherche jusqu'à la fin du cycle, pas seulement jusqu'à mucusLimit)
-            for (let k = peakLast + 1; k < n; k++) {
+        if (peakDayLast !== null) {
+            for (let k = peakDayLast + 1; k < n; k++) {
                 const e = entries[k];
                 if (!('mucusSensation' in e) && !('mucusAspect' in e)) continue;
                 const code = CycleComputer.classifyMucus(e.mucusSensation, e.mucusAspect);
                 if (CycleComputer.getMucusWeight(code) < maxW) {
-                    result.mucusPeakIndex = peakLast;
+                    result.mucusPeakIndex = k;
                     break;
                 }
             }
         }
 
 				// ── 4. Jour d'ovulation (Confirmation de la période infertile) ────────
+
         //
         // Sensiplan : Les deux indicateurs doivent être présents.
         // L'infertilité commence au soir du PLUS TARDIF des deux confirmations :
