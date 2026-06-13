@@ -309,16 +309,19 @@ export class CycleComputer {
         }
 
         if (peakDayLast !== null) {
+            // Rétro-noter P (peak) seulement quand on observe un déclin.
+            // Exemple : J1 G+, J2 (max), J3 G (baisse) => P = J2
             for (let k = peakDayLast + 1; k < n; k++) {
                 const e = entries[k];
                 if (!('mucusSensation' in e) && !('mucusAspect' in e)) continue;
                 const code = CycleComputer.classifyMucus(e.mucusSensation, e.mucusAspect);
                 if (CycleComputer.getMucusWeight(code) < maxW) {
-                    result.mucusPeakIndex = k;
+                    result.mucusPeakIndex = peakDayLast;
                     break;
                 }
             }
         }
+
 
 				// ── 4. Jour d'ovulation (Confirmation de la période infertile) ────────
 
