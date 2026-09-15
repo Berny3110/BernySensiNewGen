@@ -671,34 +671,46 @@ export class UIManager {
             }, true); // Utiliser capture pour attraper les événements blur
         }
     }
-    
+        
     updateCyclesTable() {
         const tbody = document.getElementById('cycles-table-body');
         if (!tbody) return;
-        
+
         const cycles = this.dm.getAllCycles();
         const activeIndex = this.dm.getActiveCycleIndex();
-        
-        // CORRECTION : Trier par date de début (du plus ancien au plus récent)
-        const sortedCycles = cycles.map((c, originalIndex) => ({ ...c, originalIndex }))
+
+        // Tri par date de début (du plus ancien au plus récent)
+        const sortedCycles = cycles
+            .map((c, originalIndex) => ({ ...c, originalIndex }))
             .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
-        
-        tbody.innerHTML = sortedCycles.map((c) => {
-            const startDate = new Date(c.startDate);
-            const entriesCount = c.entries.length;
-            
-            // Calcul de la durée
-            let duration = '—';
-            if (c.entries.length > 0) {
-                const sortedEntries = [...c.entries].sort((a, b) => new Date(a.date) - new Date(b.date));
-                const firstDate = new Date(sortedEntries[0].date);
-                const lastDate = new Date(sortedEntries[sortedEntries.length - 1].date);
-                const days = Math.floor((lastDate - firstDate) / (1000 * 60 * 60 * 24)) + 1;
-                duration = `${days}j`;
+
+        tbody.innerHTML = sortedCycles.map((c, idx) => {
+
+            const start = new Date(c.startDate);
+            start.setHours(0,0,0,0);
+
+            // --- Fin du cycle ---
+            let end;
+
+            const nextCycle = sortedCycles[idx + 1];
+            if (nextCycle) {
+                // Cycle terminé : fin = veille du cycle suivant
+                end = new Date(nextCycle.startDate);
+                end.setDate(end.getDate() - 1);
+                end.setHours(0,0,0,0);
+            } else {
+                // Dernier cycle : fin = aujourd'hui
+                end = new Date();
+                end.setHours(0,0,0,0);
             }
-            
+
+            // --- Durée en jours ---
+            const days = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
+            const duration = `${days}j`;
+
+            const entriesCount = c.entries.length;
             const isCurrent = c.originalIndex === activeIndex;
-            
+
             return `
                 <tr class="${isCurrent ? 'active-cycle' : ''}" data-index="${c.originalIndex}">
                     <td>
@@ -716,6 +728,7 @@ export class UIManager {
             `;
         }).join('');
     }
+
 
     refreshAll() {
         this.updateCycleNavDisplay();
