@@ -19,33 +19,36 @@ export class PaperRenderer {
             dayWidth: 32,
             headerHeight: 40,
             footerHeight: 180, 
-            tempMin: 36.0,
-            tempMax: 37.0,
+            tempMin: 35.9,
+            tempMax: 37.1,
             gridHeight: 300,
-            paddingLeft: 44,
+            paddingLeft: 46,
             colors: {
-                grid: '#e0e0e0',
-                gridStrong: '#9e9e9e',
-                tempLine: '#2962ff',
-                tempDot: '#000000',
-                text: '#333333',
-                coverLine: '#2196f3',
-                peak: '#e91e63',
-                bleeding: '#d32f2f',
-                bgFirstDays: 'rgba(33, 150, 243, 0.13)',
-                bgOvulation: 'rgba(211, 47, 47, 0.25)',
-                bgPostOv1_3: 'rgba(233, 30, 99, 0.13)',
-                bgInfertile: 'rgba(33, 150, 243, 0.13)',
-                highTempFill: '#ff5722',
-                hatchBg: 'rgba(255, 87, 34, 0.10)',
-                hatchLine: 'rgba(255, 87, 34, 0.55)',
-                retreatStroke: '#9e9e9e',
-                refTempNumber: '#1565c0',
-                'G+': '#c62828',
-                'G':  '#e65100',
-                'h':  '#1565c0',
-                'S':  '#757575',
-                'Ø':  '#888888',
+                background: '#080d15',          // Fond sombre console Stitch
+                grid: 'rgba(30, 45, 66, 0.45)', // Lignes millimétrées sombres subtiles
+                gridStrong: '#1e2d42',          // Lignes de repère plus marquées
+                tempLine: '#38bdf8',            // Cyan électrique Stitch
+                tempDot: '#ffffff',             // Point blanc
+                tempDotBorder: '#0284c7',       // Cerclage bleu
+                text: '#94a3b8',                // Typo secondaire gris bleu
+                textBright: '#ffffff',          // Typo blanche pour les jours
+                coverLine: '#38bdf8',           // Coverline cyan
+                peak: '#f43f5e',                // Marqueur ovulation rose/rouge
+                bleeding: '#e11d48',            // Gouttes de règles
+                bgFirstDays: 'rgba(56, 189, 248, 0.06)',
+                bgOvulation: 'rgba(244, 63, 94, 0.22)',
+                bgPostOv1_3: 'rgba(244, 63, 94, 0.10)',
+                bgInfertile: 'rgba(56, 189, 248, 0.06)',
+                highTempFill: '#f97316',        // Triangles orange haute température
+                hatchBg: 'rgba(180, 83, 9, 0.18)', // Fond boîte diagnostic
+                hatchLine: 'rgba(245, 158, 11, 0.75)', // Hachures jaunes/oranges
+                retreatStroke: '#64748b',
+                refTempNumber: '#38bdf8',
+                'G+': '#f59e0b',                // Glaire G+ orange doré
+                'G':  '#f59e0b',
+                'h':  '#38bdf8',
+                'S':  '#64748b',
+                'Ø':  '#475569',
             }
         };
 
@@ -140,29 +143,27 @@ export class PaperRenderer {
     }
 
     updateThemeColors() {
-        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
         if (isDark) {
-            this.config.colors.background = '#2a2a2a';
-            this.config.colors.grid = '#3a3a3a';
-            this.config.colors.gridStrong = '#555555';
-            this.config.colors.text = '#e0e0e0';
-            this.config.colors.tempLine = '#64b5f6';
+            this.config.colors.background = '#080d15';
+            this.config.colors.grid = 'rgba(30, 45, 66, 0.45)';
+            this.config.colors.gridStrong = '#1e2d42';
+            this.config.colors.text = '#94a3b8';
+            this.config.colors.textBright = '#ffffff';
+            this.config.colors.tempLine = '#38bdf8';
             this.config.colors.tempDot = '#ffffff';
-            this.config.colors.bgFirstDays = 'rgba(33, 150, 243, 0.18)';
-            this.config.colors.bgOvulation = 'rgba(211, 47, 47, 0.35)';
-            this.config.colors.bgPostOv1_3 = 'rgba(233, 30, 99, 0.20)';
-            this.config.colors.bgInfertile = 'rgba(33, 150, 243, 0.18)';
+            this.config.colors.coverLine = '#38bdf8';
+            this.config.colors.refTempNumber = '#38bdf8';
         } else {
             this.config.colors.background = '#ffffff';
-            this.config.colors.grid = '#e0e0e0';
-            this.config.colors.gridStrong = '#9e9e9e';
-            this.config.colors.text = '#333333';
-            this.config.colors.tempLine = '#2962ff';
-            this.config.colors.tempDot = '#000000';
-            this.config.colors.bgFirstDays = 'rgba(33, 150, 243, 0.13)';
-            this.config.colors.bgOvulation = 'rgba(211, 47, 47, 0.25)';
-            this.config.colors.bgPostOv1_3 = 'rgba(233, 30, 99, 0.13)';
-            this.config.colors.bgInfertile = 'rgba(33, 150, 243, 0.13)';
+            this.config.colors.grid = '#e2e8f0';
+            this.config.colors.gridStrong = '#cbd5e1';
+            this.config.colors.text = '#475569';
+            this.config.colors.textBright = '#0f172a';
+            this.config.colors.tempLine = '#0284c7';
+            this.config.colors.tempDot = '#0284c7';
+            this.config.colors.coverLine = '#0284c7';
+            this.config.colors.refTempNumber = '#0284c7';
         }
     }
 
@@ -260,7 +261,7 @@ export class PaperRenderer {
             
             if (isStrong) {
                 ctx.save();
-                ctx.font = '10px sans-serif';
+                ctx.font = '500 10px "JetBrains Mono", monospace';
                 ctx.fillStyle = config.colors.text;
                 ctx.textAlign = 'right';
                 ctx.fillText(temp.toFixed(1), config.paddingLeft - 5, y + 3);
@@ -274,7 +275,7 @@ export class PaperRenderer {
             
             // Numéro de jour
             ctx.save();
-            ctx.font = 'bold 11px sans-serif';
+            ctx.font = 'bold 10px "JetBrains Mono", monospace';
             ctx.fillStyle = config.colors.text;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
@@ -406,7 +407,7 @@ export class PaperRenderer {
                     ctx.arc(xCenter, y, 4, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.fillStyle = config.colors.text;
-                    ctx.font = 'bold 11px sans-serif';
+                    ctx.font = 'bold 10px "JetBrains Mono", monospace';
                     ctx.textAlign = 'center';
                     ctx.fillText('✕', xCenter, y + 4);
                 }

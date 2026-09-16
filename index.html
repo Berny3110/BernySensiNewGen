@@ -2,28 +2,25 @@
 <html lang="fr" data-theme="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SensiTrack</title>
+    <meta name="description" content="Application de suivi symptothermique et graphique thermique de cycle">
+    <meta property="og:title" content="SensiTrack">
+    <meta property="og:description" content="Application de suivi symptothermique et graphique thermique de cycle">
     
-    <meta name="theme-color" content="#5c6bc0"> 
+    <meta name="theme-color" content="#070a10"> 
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-    <link rel="manifest" href="manifest.json?v=2">
-    <link rel="stylesheet" href="style.css">
+    <!-- Fonts: Geist & JetBrains Mono (Precision Instrument Dark - Google Stitch) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/style.css">
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
-
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('SW enregistré !'))
-                    .catch(err => console.error('SW Erreur:', err));
-            });
-        }
-    </script>
 </head>
 <body>
 
@@ -32,10 +29,10 @@
             <div class="brand">SensiTrack</div>
             <div class="cycle-nav-compact">
                 <button id="btn-prev-cycle" class="cycle-arrow" title="Cycle précédent">‹</button>
-                <div id="cycle-display-compact" class="cycle-label">Cycle #1</div>
+                <div id="cycle-display-compact" class="cycle-label">Cycle #6</div>
                 <button id="btn-next-cycle" class="cycle-arrow" title="Cycle suivant">›</button>
             </div>
-            <button id="theme-toggle" class="theme-switch">
+            <button id="theme-toggle" class="theme-switch" title="Changer de thème">
                 <span class="icon-sun">☀️</span>
                 <span class="icon-moon">🌙</span>
             </button>
@@ -59,14 +56,18 @@
         <section id="temp-panel" class="panel active">
             <div class="temp-display-large" id="temp-val-display">36.30°C</div>
             <div class="wheels-container">
-                <div class="wheel-wrapper">
+                <div class="selection-indicator-bar">
+                    <div class="notch"></div>
+                    <div class="notch"></div>
+                </div>
+                <div class="wheel-wrapper" id="wheel-int-wrapper">
                     <div id="wheel-int" class="wheel-content"></div>
                 </div>
-                <div class="wheel-separator">.</div>
-                <div class="wheel-wrapper">
+                <div class="wheel-separator">•</div>
+                <div class="wheel-wrapper" id="wheel-dec1-wrapper">
                     <div id="wheel-dec1" class="wheel-content"></div>
                 </div>
-                <div class="wheel-wrapper">
+                <div class="wheel-wrapper" id="wheel-dec2-wrapper">
                     <div id="wheel-dec2" class="wheel-content"></div>
                 </div>
             </div>
@@ -76,46 +77,46 @@
         <section id="mucus-panel" class="panel">
             <h3 class="section-title">Saignements</h3>
             <div class="mucus-grid-compact">
-                <label class="radio-card"><input type="radio" name="bleeding" value="none" checked> ∅ Aucun</label>
-                <label class="radio-card"><input type="radio" name="bleeding" value="spotting"> 💉 Spotting</label>
-                <label class="radio-card"><input type="radio" name="bleeding" value="light"> 🩸 Léger</label>
-                <label class="radio-card"><input type="radio" name="bleeding" value="medium"> 🩸🩸 Moyen</label>
-                <label class="radio-card"><input type="radio" name="bleeding" value="heavy"> 🩸🩸🩸 Abondant</label> 
+                <label class="radio-card"><input type="radio" name="bleeding" value="none" checked> <span>∅ Aucun</span></label>
+                <label class="radio-card"><input type="radio" name="bleeding" value="spotting"> <span>💉 Spotting</span></label>
+                <label class="radio-card"><input type="radio" name="bleeding" value="light"> <span>🩸 Léger</span></label>
+                <label class="radio-card"><input type="radio" name="bleeding" value="medium"> <span>🩸🩸 Moyen</span></label>
+                <label class="radio-card"><input type="radio" name="bleeding" value="heavy"> <span>🩸🩸🩸 Abondant</span></label> 
             </div>
 
             <hr class="section-divider">
             
-				<h3 class="section-title" id="mucus-sensation-title">Ressenti / Sensation à la vulve</h3>
-				<div class="mucus-grid-compact" id="mucus-sensation-grid">
-						<label class="radio-card"><input type="radio" name="mucus-sensation" value="rien"> ∅ Rien senti, pas d'humidité</label>
-						<label class="radio-card"><input type="radio" name="mucus-sensation" value="sec"> 🌵 Sec, rêche, désagréable, démangeaisons</label>
-						<label class="radio-card"><input type="radio" name="mucus-sensation" value="humide"> 💧 Humide</label>
-						<label class="radio-card"><input type="radio" name="mucus-sensation" value="mouille"> 💦 Mouillé, lubrifié, lisse, glissant, comme huilé</label>
-				</div>
+            <h3 class="section-title" id="mucus-sensation-title">Ressenti / Sensation à la vulve</h3>
+            <div class="mucus-grid-compact" id="mucus-sensation-grid">
+                <label class="radio-card"><input type="radio" name="mucus-sensation" value="rien"> <span>∅ Rien senti, pas d'humidité</span></label>
+                <label class="radio-card"><input type="radio" name="mucus-sensation" value="sec"> <span>🌵 Sec, rêche, désagréable, démangeaisons</span></label>
+                <label class="radio-card"><input type="radio" name="mucus-sensation" value="humide"> <span>💧 Humide</span></label>
+                <label class="radio-card"><input type="radio" name="mucus-sensation" value="mouille"> <span>💦 Mouillé, lubrifié, lisse, glissant, comme huilé</span></label>
+            </div>
 
-				<h3 class="section-title" id="mucus-aspect-title">Apparence de la glaire</h3>
-				<div class="mucus-grid-compact" id="mucus-aspect-grid">
-						<label class="radio-card"><input type="radio" name="mucus-aspect" value="rien"> ∅ Rien vu, pas de glaire</label>
-						<label class="radio-card"><input type="radio" name="mucus-aspect" value="epais"> 🥛 Épais, blanchâtre, trouble, crémeux, grumeleux, jaunâtre, collant, non-élastique</label>
-						<label class="radio-card"><input type="radio" name="mucus-aspect" value="clair"> 🥚 Translucide, clair, transparent, blanc d'œuf, élastique, filant, fluide, liquide, rougeâtre</label>
-				</div>
+            <h3 class="section-title" id="mucus-aspect-title">Apparence de la glaire</h3>
+            <div class="mucus-grid-compact" id="mucus-aspect-grid">
+                <label class="radio-card"><input type="radio" name="mucus-aspect" value="rien"> <span>∅ Rien vu, pas de glaire</span></label>
+                <label class="radio-card"><input type="radio" name="mucus-aspect" value="epais"> <span>🥛 Épais, blanchâtre, trouble, crémeux, grumeleux, jaunâtre, collant, non-élastique</span></label>
+                <label class="radio-card"><input type="radio" name="mucus-aspect" value="clair"> <span>🥚 Translucide, clair, transparent, blanc d'œuf, élastique, filant, fluide, liquide, rougeâtre</span></label>
+            </div>
 
             <button id="btn-validate-mucus" class="btn-main-action">✓ Valider</button>
         </section>
 
         <section id="perturb-panel" class="panel">
             <label class="check-card special">
-                <input type="checkbox" id="manual-exclude-temp"> 🚫 Exclure cette mesure
+                <input type="checkbox" id="manual-exclude-temp"> <span>🚫 Exclure cette mesure</span>
             </label>
             <label class="check-card love-card">
-                <input type="checkbox" id="p-love"> ❤️ golo-golo dans la case
+                <input type="checkbox" id="p-love"> <span>❤️ golo-golo dans la case</span>
             </label>
             <div class="perturbations-grid">
-                <label class="check-card"><input type="checkbox" id="p-sleep"> 💤 Sommeil</label>
-                <label class="check-card"><input type="checkbox" id="p-alcohol"> 🍷 Alcool</label>
-                <label class="check-card"><input type="checkbox" id="p-illness"> 🤒 Maladie</label>
-                <label class="check-card"><input type="checkbox" id="p-stress"> ⚡ Stress</label>
-                <label class="check-card"><input type="checkbox" id="p-late"> ⏰ Prise tardive</label>
+                <label class="check-card"><input type="checkbox" id="p-sleep"> <span>💤 Sommeil</span></label>
+                <label class="check-card"><input type="checkbox" id="p-alcohol"> <span>🍷 Alcool</span></label>
+                <label class="check-card"><input type="checkbox" id="p-illness"> <span>🤕 Maladie</span></label>
+                <label class="check-card"><input type="checkbox" id="p-stress"> <span>⚡ Stress</span></label>
+                <label class="check-card"><input type="checkbox" id="p-late"> <span>⏰ Prise tardive</span></label>
             </div>
             <button id="btn-validate-misc" class="btn-main-action">✓ Valider</button>
         </section>
@@ -154,19 +155,43 @@
         </section>
     </main>
 
-    <!-- FAB : Bouton flottant pour le graphique -->
+    <!-- FAB : Bouton sobre élégant pour le graphique (non-flashy) -->
     <button id="btn-open-chart" class="fab-chart" title="Voir le graphique">
-        📈
+        <svg style="width: 26px; height: 26px;" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+            <polyline points="16 7 22 7 22 13"></polyline>
+        </svg>
     </button>
 
-    <!-- Overlay du graphique -->
-    <div id="full-screen-chart-overlay" class="chart-overlay hidden">
-				<button id="btn-close-chart" class="btn-close">🏠 Retour</button>
-        <div class="canvas-scroll-container" id="canvas-scroll-container">
-            <canvas id="paperChartCanvas"></canvas>
+    <!-- Overlay du graphique positionné à 90° (Paysage) -->
+    <div id="full-screen-chart-overlay" class="chart-overlay rotate-90 hidden">
+        <div class="viewport-canvas">
+            <div class="chart-toolbar">
+                <button id="btn-close-chart" class="btn-chart-tool" type="button">
+                    <svg style="width: 14px; height: 14px; color: #38bdf8;" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" viewBox="0 0 24 24">
+                        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                    <span>Retour</span>
+                </button>
+                <div class="chart-toolbar-actions">
+                    <button id="btn-toggle-rotate" class="btn-chart-tool" type="button" title="Pivoter à 90°">
+                        <svg style="width: 13px; height: 13px;" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                        </svg>
+                        <span>90°</span>
+                    </button>
+                </div>
+            </div>
+            <div class="canvas-scroll-container" id="canvas-scroll-container">
+                <canvas id="paperChartCanvas"></canvas>
+            </div>
         </div>
     </div>
 
-    <script type="module" src="js/app.js"></script>
+    <!-- Notification toast -->
+    <div id="sensitrack-toast" class="sensitrack-toast">Enregistré ✓</div>
+
+    <script type="module" src="/js/app.js"></script>
 </body>
 </html>

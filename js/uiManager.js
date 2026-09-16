@@ -584,7 +584,7 @@ export class UIManager {
         }
     }
 
-    // REFONTE : Gestion des cycles via tableau
+    // REFONTE : Gestion des cycles via tableau// Dans uiManager.js :
     initCycleManager() {
         const btnAddCycle = document.getElementById('btn-add-cycle-main');
         const btnConfirmNew = document.getElementById('btn-confirm-new-cycle');
@@ -617,14 +617,14 @@ export class UIManager {
             });
         }
         
-        // Gestion du tableau
+        // Gestion du tableau : sélection fluide au clic sur TOUTE la ligne
         const tbody = document.getElementById('cycles-table-body');
         if (tbody) {
             tbody.addEventListener('click', (e) => {
                 const row = e.target.closest('tr');
                 if (!row) return;
                 
-                const index = parseInt(row.dataset.index);
+                const index = parseInt(row.dataset.index, 10);
                 
                 // Suppression
                 if (e.target.closest('.btn-delete-cycle')) {
@@ -634,41 +634,47 @@ export class UIManager {
                     }
                     return;
                 }
-                
+
                 // Empêcher la sélection si on clique sur un input
-                if (e.target.classList.contains('cycle-id-input') || 
-                    e.target.classList.contains('cycle-date-input')) {
+                    if (e.target.classList.contains('cycle-id-input') || 
+                        e.target.classList.contains('cycle-date-input')) {
+                        e.stopPropagation();
+                        return;
+                    }
+
+                
+                // Sélection instantanée du cycle au clic sur la ligne
+                this.dm.setActiveCycleIndex(index);
+                this.refreshAll();
+            });
+            
+            // Modification des valeurs à la perte de focus (blur)
+            tbody.addEventListener('click', (e) => {
+                const row = e.target.closest('tr');
+                if (!row) return;
+
+                const index = parseInt(row.dataset.index, 10);
+
+                // Suppression
+                if (e.target.closest('.btn-delete-cycle')) {
+                    e.stopPropagation();
+                    if (this.dm.deleteCycle(index)) {
+                        this.refreshAll();
+                    }
+                    return;
+                }
+
+                // Empêcher la sélection si on clique DANS un input/select/button (n'importe quel descendant)
+                if (e.target.closest('input') || e.target.closest('select') || e.target.closest('button')) {
                     e.stopPropagation();
                     return;
                 }
-                
-                // Sélection du cycle
-                if (!e.target.closest('.cycle-actions-cell')) {
-                    this.dm.setActiveCycleIndex(index);
-                    this.refreshAll();
-                }
+
+                // Sélection instantanée du cycle au clic sur la ligne
+                this.dm.setActiveCycleIndex(index);
+                this.refreshAll();
             });
-            
-            // CORRECTION : Édition des champs avec blur au lieu de change
-            tbody.addEventListener('blur', (e) => {
-                if (e.target.classList.contains('cycle-id-input')) {
-                    const index = parseInt(e.target.dataset.index);
-                    const newId = parseInt(e.target.value);
-                    if (newId && newId > 0) {
-                        this.dm.updateCycleId(index, newId);
-                        this.refreshAll();
-                    }
-                }
-                
-                if (e.target.classList.contains('cycle-date-input')) {
-                    const index = parseInt(e.target.dataset.index);
-                    const newDate = e.target.value;
-                    if (newDate) {
-                        this.dm.updateCycleStartDate(index, newDate);
-                        this.refreshAll();
-                    }
-                }
-            }, true); // Utiliser capture pour attraper les événements blur
+
         }
     }
         
@@ -685,41 +691,41 @@ export class UIManager {
             .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
 
         tbody.innerHTML = sortedCycles.map((c, idx) => {
-
             const start = new Date(c.startDate);
-            start.setHours(0,0,0,0);
+            start.setHours(0, 0, 0, 0);
 
-            // --- Fin du cycle ---
             let end;
-
             const nextCycle = sortedCycles[idx + 1];
             if (nextCycle) {
-                // Cycle terminé : fin = veille du cycle suivant
                 end = new Date(nextCycle.startDate);
                 end.setDate(end.getDate() - 1);
-                end.setHours(0,0,0,0);
+                end.setHours(0, 0, 0, 0);
             } else {
-                // Dernier cycle : fin = aujourd'hui
                 end = new Date();
-                end.setHours(0,0,0,0);
+                end.setHours(0, 0, 0, 0);
             }
 
-            // --- Durée en jours ---
             const days = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
             const duration = `${days}j`;
-
             const entriesCount = c.entries.length;
             const isCurrent = c.originalIndex === activeIndex;
+            const isLast = idx === sortedCycles.length - 1;
 
             return `
                 <tr class="${isCurrent ? 'active-cycle' : ''}" data-index="${c.originalIndex}">
-                    <td>
-                        <input type="number" class="cycle-id-input" value="${c.id}" data-index="${c.originalIndex}" min="1">
+                    <td class="cycle-radio-cell">
+                        <div class="cycle-radio-dot"></div>
                     </td>
                     <td>
-                        <input type="date" class="cycle-date-input" value="${c.startDate}" data-index="${c.originalIndex}">
+                        <input type="number" class="cycle-id-input" value="${c.id}" data-index="${c.originalIndex}" min="1" title="Modifier le numéro">
                     </td>
-                    <td>${duration}</td>
+                    <td>
+                        <input type="date" class="cycle-date-input" value="${c.startDate}" data-index="${c.originalIndex}" title="Modifier la date de début">
+                    </td>
+                    <td>
+                        <span class="cycle-duration ${isCurrent ? 'current' : ''}">${duration}</span>
+                        ${isCurrent ? `<span class="cycle-status-tag">${isLast ? 'EN COURS' : 'ACTIF'}</span>` : ''}
+                    </td>
                     <td>${entriesCount}</td>
                     <td class="cycle-actions-cell">
                         <button class="btn-icon-small danger btn-delete-cycle" data-index="${c.originalIndex}" title="Supprimer">🗑️</button>
@@ -749,7 +755,10 @@ export class UIManager {
         this.dom.inputs.perturbations.forEach(p => { if(p) p.checked = false; });
         if(this.dom.manualExclude) this.dom.manualExclude.checked = false;
 				
-				if(this.dom.inputs.loveCheckbox) this.dom.inputs.loveCheckbox.checked = !!entry.love;
+			// ✅ CODE CORRIGÉ :
+            if (this.dom.inputs.loveCheckbox) {
+                this.dom.inputs.loveCheckbox.checked = !!(entry && entry.love);
+            }
 
         if (entry) {
             // Saignements
@@ -836,8 +845,8 @@ export class UIManager {
             return `
             <li class="history-item" data-date="${e.date}" style="cursor:pointer;">
                 <div>
-                    <div style="font-weight: 700; color: var(--primary); margin-bottom: 4px;">${dateFr}</div>
-                    <div style="font-size: 0.9rem; color: #666;">${details.join(' • ')}</div>
+                    <div class="history-date">${dateFr}</div>
+                    <div class="history-details">${details.join(' • ')}</div>
                 </div>
                 <button class="btn-delete-entry" data-date="${e.date}">×</button>
             </li>`;
