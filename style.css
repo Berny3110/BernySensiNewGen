@@ -102,47 +102,53 @@ input[type="time"],
     justify-content: space-between;
     align-items: center;
     margin-bottom: 8px;
-    gap: 8px;
+    gap: 6px;
+    width: 100%;
 }
 
 .header-row-2 {
     display: flex;
     justify-content: center;
-    gap: 12px;
+    gap: 10px;
+    width: 100%;
 }
 
 /* Logo SensiTrack */
 .brand { 
     font-weight: 700; 
     color: #38bdf8;
-    font-size: 1.25rem;
+    font-size: clamp(1.05rem, 4vw, 1.25rem);
     letter-spacing: -0.02em;
     white-space: nowrap;
     text-shadow: 0 0 16px rgba(56, 189, 248, 0.65);
+    flex-shrink: 0;
 }
 
 /* Compact Cycle Selector */
 .cycle-nav-compact {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
     background: #0b0f19;
-    padding: 4px 10px;
+    padding: 3px 8px;
     border-radius: 9999px;
     border: 1px solid #1a2336;
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8);
+    flex-shrink: 1;
+    min-width: 0;
 }
 
 .cycle-arrow {
     background: none;
     border: none;
-    font-size: 1.3rem;
+    font-size: 1.2rem;
     color: #38bdf8;
     cursor: pointer;
-    padding: 0 5px;
+    padding: 0 4px;
     font-weight: bold;
     line-height: 1;
     transition: transform 0.1s, color 0.15s;
+    flex-shrink: 0;
 }
 
 .cycle-arrow:hover {
@@ -159,38 +165,44 @@ input[type="time"],
 }
 
 .cycle-label {
-    font-size: 0.8rem;
+    font-size: 0.76rem;
     font-weight: 700;
     color: #ffffff;
-    letter-spacing: 0.04em;
-    min-width: 80px;
+    letter-spacing: 0.02em;
+    min-width: 66px;
     text-align: center;
     white-space: nowrap;
     text-transform: uppercase;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Header Actions Group */
 .header-actions {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     position: relative;
+    flex-shrink: 0;
 }
 
 /* Theme Switch */
 .theme-switch {
     background: #0e1422;
     border: 1px solid #1e283c;
-    padding: 6px 10px;
+    padding: 5px 8px;
     border-radius: 9999px;
     cursor: pointer;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
     color: #f59e0b;
     box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+    flex-shrink: 0;
+    min-width: 32px;
+    min-height: 32px;
 }
 
 .theme-switch:hover {
@@ -207,16 +219,19 @@ input[type="time"],
     position: relative;
     background: #0e1422;
     border: 1px solid #1e283c;
-    padding: 6px 10px;
+    padding: 5px 8px;
     border-radius: 9999px;
     cursor: pointer;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
     color: var(--text-muted);
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    flex-shrink: 0;
+    min-width: 32px;
+    min-height: 32px;
 }
 
 .notif-btn:hover {

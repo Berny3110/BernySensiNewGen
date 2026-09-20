@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v34';
+const CACHE_VERSION = 'v35';
 const CACHE_NAME = `sensitrack-cache-${CACHE_VERSION}`;
 
 const ASSETS = [
