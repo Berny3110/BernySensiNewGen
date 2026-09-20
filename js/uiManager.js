@@ -5,6 +5,7 @@
 import { CycleComputer } from './cycleComputer.js';
 import { WheelManager } from './wheelManager.js';
 import { PaperRenderer } from './paperRenderer.js';
+import { NotificationManager } from './notificationManager.js';
 
 export class UIManager {
     constructor(dataManager) {
@@ -29,6 +30,8 @@ export class UIManager {
         this.initCycleNavigation();
         this.initCycleManager();
         this.initTheme();
+        this.notifManager = new NotificationManager(this);
+        this.notifManager.init();
         this.initChartOverlay();
 
         const btnTemp = document.getElementById('btn-validate-temp');
