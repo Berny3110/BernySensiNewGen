@@ -6,8 +6,9 @@
  * - La demande et vérification des permissions (Notification.permission)
  * - L'activation / désactivation du toggle et la synchronisation avec localStorage
  * - La sélection et persistance des heures de rappel (matin et soir)
- * - Les hooks d'abonnement / désabonnement au PushManager du Service Worker
- * - L'envoi d'une notification de test pour valider le fonctionnement
+ * - L'ordonnanceur local (scheduler en temps réel) qui surveille l'horloge
+ * - Le déclenchement effectif des rappels programmés à la minute exacte
+ * - L'envoi d'une notification de test immédiate
  */
 
 export class NotificationManager {
@@ -16,11 +17,14 @@ export class NotificationManager {
         this.STORAGE_KEY_ENABLED = 'sensitrack_notif_enabled';
         this.STORAGE_KEY_MORNING = 'sensitrack_notif_morning';
         this.STORAGE_KEY_EVENING = 'sensitrack_notif_evening';
+        this.STORAGE_KEY_LAST_MORNING = 'sensitrack_notif_last_morning_sent';
+        this.STORAGE_KEY_LAST_EVENING = 'sensitrack_notif_last_evening_sent';
 
         this.DEFAULT_MORNING = '08:00';
         this.DEFAULT_EVENING = '20:00';
 
         this.isOpen = false;
+        this.schedulerInterval = null;
     }
 
     init() {
@@ -30,6 +34,7 @@ export class NotificationManager {
         this.loadSettings();
         this.bindEvents();
         this.updatePermissionUI();
+        this.startScheduler();
     }
 
     cacheDOM() {
@@ -44,7 +49,9 @@ export class NotificationManager {
             timeMorning: document.getElementById('notif-time-morning'),
             timeEvening: document.getElementById('notif-time-evening'),
             testBtn: document.getElementById('notif-test-btn'),
-            scheduleSection: document.getElementById('notif-schedule-section')
+            scheduleSection: document.getElementById('notif-schedule-section'),
+            nextStatus: document.getElementById('notif-next-status'),
+            nextText: document.getElementById('notif-next-text')
         };
     }
 
@@ -61,6 +68,7 @@ export class NotificationManager {
         }
 
         this.updateStatusBadge(isEnabled);
+        this.updateNextStatusUI();
     }
 
     bindEvents() {
@@ -104,8 +112,11 @@ export class NotificationManager {
             this.dom.timeMorning.addEventListener('change', (e) => {
                 const val = e.target.value || this.DEFAULT_MORNING;
                 localStorage.setItem(this.STORAGE_KEY_MORNING, val);
+                // Réinitialiser le verrou du jour pour permettre un test immédiat
+                localStorage.removeItem(this.STORAGE_KEY_LAST_MORNING);
+                this.updateNextStatusUI();
                 if (this.ui?.showToast) {
-                    this.ui.showToast(`Rappel matin : ${val} ✓`);
+                    this.ui.showToast(`Rappel matin programmé : ${val} ✓`);
                 }
             });
         }
@@ -115,8 +126,11 @@ export class NotificationManager {
             this.dom.timeEvening.addEventListener('change', (e) => {
                 const val = e.target.value || this.DEFAULT_EVENING;
                 localStorage.setItem(this.STORAGE_KEY_EVENING, val);
+                // Réinitialiser le verrou du jour pour permettre un test immédiat
+                localStorage.removeItem(this.STORAGE_KEY_LAST_EVENING);
+                this.updateNextStatusUI();
                 if (this.ui?.showToast) {
-                    this.ui.showToast(`Rappel soir : ${val} ✓`);
+                    this.ui.showToast(`Rappel soir programmé : ${val} ✓`);
                 }
             });
         }
@@ -127,6 +141,151 @@ export class NotificationManager {
                 e.stopPropagation();
                 await this.sendTestNotification();
             });
+        }
+
+        // Réveil de l'écran ou retour sur l'onglet PWA
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                this.checkScheduledReminders();
+            }
+        });
+
+        window.addEventListener('focus', () => {
+            this.checkScheduledReminders();
+        });
+    }
+
+    /**
+     * Démarrage de la boucle de surveillance du temps (scheduler)
+     */
+    startScheduler() {
+        if (this.schedulerInterval) {
+            clearInterval(this.schedulerInterval);
+        }
+
+        // Vérification immédiate
+        this.checkScheduledReminders();
+
+        // Surveillance toutes les 15 secondes pour intercepter la minute pile
+        this.schedulerInterval = setInterval(() => {
+            this.checkScheduledReminders();
+        }, 15000);
+    }
+
+    /**
+     * Vérifie si l'heure actuelle correspond à l'un des deux rappels programmés
+     */
+    checkScheduledReminders() {
+        const isEnabled = localStorage.getItem(this.STORAGE_KEY_ENABLED) === 'true';
+        if (!isEnabled || !('Notification' in window) || Notification.permission !== 'granted') {
+            this.updateNextStatusUI();
+            return;
+        }
+
+        const now = new Date();
+        const currentHours = String(now.getHours()).padStart(2, '0');
+        const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+        const currentTimeStr = `${currentHours}:${currentMinutes}`;
+        const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+        const morningTime = localStorage.getItem(this.STORAGE_KEY_MORNING) || this.DEFAULT_MORNING;
+        const eveningTime = localStorage.getItem(this.STORAGE_KEY_EVENING) || this.DEFAULT_EVENING;
+
+        const lastMorningSent = localStorage.getItem(this.STORAGE_KEY_LAST_MORNING);
+        const lastEveningSent = localStorage.getItem(this.STORAGE_KEY_LAST_EVENING);
+
+        // 1. Rappel du matin
+        if (currentTimeStr === morningTime && lastMorningSent !== todayDateStr) {
+            localStorage.setItem(this.STORAGE_KEY_LAST_MORNING, todayDateStr);
+            this.triggerReminderNotification('morning');
+        }
+
+        // 2. Rappel du soir
+        if (currentTimeStr === eveningTime && lastEveningSent !== todayDateStr) {
+            localStorage.setItem(this.STORAGE_KEY_LAST_EVENING, todayDateStr);
+            this.triggerReminderNotification('evening');
+        }
+
+        this.updateNextStatusUI();
+    }
+
+    /**
+     * Déclenche la notification programmée
+     */
+    async triggerReminderNotification(type) {
+        const isMorning = type === 'morning';
+        const title = isMorning ? "SensiTrack — Rappel du matin 🌅" : "SensiTrack — Rappel du soir 🌙";
+        const body = isMorning
+            ? "C'est l'heure de mesurer et noter votre température basale du réveil !"
+            : "Pensez à noter vos observations de glaire et sensations de la journée.";
+
+        const options = {
+            body: body,
+            icon: './maskable_icon_x192_v4.png',
+            badge: './maskable_icon_x192_v4.png',
+            vibrate: [200, 100, 200, 100, 200],
+            tag: `sensitrack-${type}`,
+            renotify: true,
+            requireInteraction: true,
+            data: { url: './' }
+        };
+
+        try {
+            if ('serviceWorker' in navigator) {
+                const reg = await navigator.serviceWorker.ready;
+                if (reg && reg.showNotification) {
+                    await reg.showNotification(title, options);
+                    if (this.ui?.showToast) this.ui.showToast(`${title} émis ✓`);
+                    return;
+                }
+            }
+            new Notification(title, options);
+            if (this.ui?.showToast) this.ui.showToast(`${title} émis ✓`);
+        } catch (err) {
+            console.warn(`Erreur déclenchement notification ${type}:`, err);
+            try {
+                new Notification(title, options);
+            } catch (e) {
+                console.error("Échec fallback notification:", e);
+            }
+        }
+    }
+
+    /**
+     * Met à jour le texte du prochain rappel calculé dans l'interface
+     */
+    updateNextStatusUI() {
+        if (!this.dom.nextText) return;
+
+        const isEnabled = localStorage.getItem(this.STORAGE_KEY_ENABLED) === 'true';
+        if (!isEnabled) {
+            this.dom.nextText.textContent = "Rappels désactivés";
+            if (this.dom.nextStatus) this.dom.nextStatus.style.opacity = '0.6';
+            return;
+        }
+
+        if (this.dom.nextStatus) this.dom.nextStatus.style.opacity = '1';
+
+        const now = new Date();
+        const currentHours = now.getHours();
+        const currentMinutes = now.getMinutes();
+        const currentTotalMin = currentHours * 60 + currentMinutes;
+
+        const morningTime = localStorage.getItem(this.STORAGE_KEY_MORNING) || this.DEFAULT_MORNING;
+        const eveningTime = localStorage.getItem(this.STORAGE_KEY_EVENING) || this.DEFAULT_EVENING;
+
+        const [mH, mM] = morningTime.split(':').map(Number);
+        const [eH, eM] = eveningTime.split(':').map(Number);
+
+        const morningTotalMin = mH * 60 + mM;
+        const eveningTotalMin = eH * 60 + eM;
+
+        if (currentTotalMin < morningTotalMin) {
+            this.dom.nextText.textContent = `Prochain rappel : Aujourd'hui à ${morningTime} (Matin)`;
+        } else if (currentTotalMin < eveningTotalMin) {
+            this.dom.nextText.textContent = `Prochain rappel : Aujourd'hui à ${eveningTime} (Soir)`;
+        } else {
+            this.dom.nextText.textContent = `Prochain rappel : Demain à ${morningTime} (Matin)`;
         }
     }
 
@@ -144,6 +303,7 @@ export class NotificationManager {
         this.dom.bellBtn.setAttribute('aria-expanded', 'true');
         this.isOpen = true;
         this.updatePermissionUI();
+        this.updateNextStatusUI();
     }
 
     closePopover() {
@@ -154,7 +314,6 @@ export class NotificationManager {
     }
 
     updatePermissionUI() {
-        // Détecter si on tourne dans une iframe
         const isInIframe = window.self !== window.top;
 
         if (!('Notification' in window)) {
@@ -184,7 +343,6 @@ export class NotificationManager {
             if (this.dom.switchContainer) {
                 this.dom.switchContainer.classList.remove('disabled');
             }
-            // Si jamais le localStorage indiquait true mais la permission est default, on réaligne
             if (this.dom.masterToggle && this.dom.masterToggle.checked) {
                 this.dom.masterToggle.checked = false;
                 localStorage.setItem(this.STORAGE_KEY_ENABLED, 'false');
@@ -240,6 +398,7 @@ export class NotificationManager {
         }
         localStorage.setItem(this.STORAGE_KEY_ENABLED, 'false');
         this.updateStatusBadge(false);
+        this.updateNextStatusUI();
     }
 
     async handleToggleChange(shouldEnable) {
@@ -261,28 +420,37 @@ export class NotificationManager {
             }
 
             if (permission === 'granted') {
-                await this.subscribeUserToPush();
                 localStorage.setItem(this.STORAGE_KEY_ENABLED, 'true');
+                // Réinitialiser les verrous pour permettre de tester tout de suite
+                localStorage.removeItem(this.STORAGE_KEY_LAST_MORNING);
+                localStorage.removeItem(this.STORAGE_KEY_LAST_EVENING);
+
                 if (this.dom.masterToggle) this.dom.masterToggle.checked = true;
                 this.updateStatusBadge(true);
+                this.updateNextStatusUI();
+
                 if (this.dom.permissionMsg) this.dom.permissionMsg.style.display = 'none';
                 if (this.dom.testBtn) this.dom.testBtn.disabled = false;
-                if (this.ui?.showToast) this.ui.showToast("Notifications activées ✓");
+
+                // Lancement immédiat du scheduler
+                this.checkScheduledReminders();
+
+                if (this.ui?.showToast) this.ui.showToast("Rappels quotidiens activés ✓");
             } else if (permission === 'denied') {
                 this.setDeniedState("Notifications bloquées par votre navigateur. Autorisez-les dans les paramètres du site.");
                 if (this.ui?.showToast) this.ui.showToast("Autorisation refusée");
             } else {
-                // L'utilisateur a fermé la boîte sans répondre
                 if (this.dom.masterToggle) this.dom.masterToggle.checked = false;
                 localStorage.setItem(this.STORAGE_KEY_ENABLED, 'false');
                 this.updateStatusBadge(false);
+                this.updateNextStatusUI();
             }
         } else {
-            await this.unsubscribeUserFromPush();
             localStorage.setItem(this.STORAGE_KEY_ENABLED, 'false');
             if (this.dom.masterToggle) this.dom.masterToggle.checked = false;
             this.updateStatusBadge(false);
-            if (this.ui?.showToast) this.ui.showToast("Notifications désactivées");
+            this.updateNextStatusUI();
+            if (this.ui?.showToast) this.ui.showToast("Rappels désactivés");
         }
     }
 
@@ -304,61 +472,6 @@ export class NotificationManager {
     }
 
     /**
-     * Simulation / Placeholder pour l'abonnement push via le Service Worker
-     */
-    async subscribeUserToPush() {
-        console.log('[Push] Simulation d’abonnement Push Manager via Service Worker...');
-        if ('serviceWorker' in navigator) {
-            try {
-                const reg = await navigator.serviceWorker.ready;
-                console.log('[Push] Service Worker prêt pour le push:', reg.scope);
-                
-                // --- Code d'abonnement réel (décommenter lors de la liaison au serveur VAPID) ---
-                // const publicVapidKey = 'VOTRE_CLE_PUBLIQUE_VAPID';
-                // const subscription = await reg.pushManager.subscribe({
-                //     userVisibleOnly: true,
-                //     applicationServerKey: this.urlBase64ToUint8Array(publicVapidKey)
-                // });
-                // await fetch('/api/push-subscribe', {
-                //     method: 'POST',
-                //     headers: { 'Content-Type': 'application/json' },
-                //     body: JSON.stringify({
-                //         subscription,
-                //         morning: this.dom.timeMorning?.value || this.DEFAULT_MORNING,
-                //         evening: this.dom.timeEvening?.value || this.DEFAULT_EVENING
-                //     })
-                // });
-                
-                return true;
-            } catch (err) {
-                console.warn('[Push] Impossible d’accéder au Service Worker pour le Push:', err);
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Simulation / Placeholder pour la désinscription push
-     */
-    async unsubscribeUserFromPush() {
-        console.log('[Push] Simulation de désinscription Push Manager...');
-        if ('serviceWorker' in navigator) {
-            try {
-                const reg = await navigator.serviceWorker.ready;
-                // const subscription = await reg.pushManager.getSubscription();
-                // if (subscription) {
-                //     await subscription.unsubscribe();
-                // }
-                console.log('[Push] Désabonnement effectué avec succès');
-                return true;
-            } catch (err) {
-                console.warn('[Push] Erreur lors de la désinscription:', err);
-            }
-        }
-        return true;
-    }
-
-    /**
      * Teste l'envoi immédiat d'une notification système
      */
     async sendTestNotification() {
@@ -367,13 +480,15 @@ export class NotificationManager {
             return;
         }
 
-        const title = "SensiTrack — Rappel";
+        const title = "SensiTrack — Test réussi ! 🔔";
         const options = {
-            body: "C'est l'heure de noter votre température et vos observations du cycle !",
+            body: "Le système de notification fonctionne parfaitement sur cet appareil.",
             icon: './maskable_icon_x192_v4.png',
             badge: './maskable_icon_x192_v4.png',
+            vibrate: [200, 100, 200],
             tag: 'sensitrack-reminder-test',
-            renotify: true
+            renotify: true,
+            data: { url: './' }
         };
 
         try {

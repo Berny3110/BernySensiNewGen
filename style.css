@@ -504,6 +504,41 @@ input[type="time"],
     cursor: not-allowed;
 }
 
+.notif-next-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.08);
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 8px;
+    padding: 7px 10px;
+}
+
+.notif-next-bullet {
+    font-size: 0.65rem;
+    color: #10b981;
+    animation: notifPulse 2s infinite;
+}
+
+@keyframes notifPulse {
+    0% { opacity: 0.4; transform: scale(0.9); }
+    50% { opacity: 1; transform: scale(1.2); }
+    100% { opacity: 0.4; transform: scale(0.9); }
+}
+
+.notif-info-tip {
+    font-size: 0.74rem;
+    line-height: 1.45;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+}
+
 .notif-popover-footer {
     padding-top: 4px;
     border-top: 1px solid var(--border);
