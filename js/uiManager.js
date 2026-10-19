@@ -29,6 +29,7 @@ export class UIManager {
         this.initInputs();
         this.initCycleNavigation();
         this.initCycleManager();
+        this.initBackupManager();
         this.initTheme();
         this.notifManager = new NotificationManager(this);
         this.notifManager.init();
@@ -721,6 +722,214 @@ export class UIManager {
             this.showToast('Cycle mis à jour ✓');
         }
         this.refreshAll();
+    }
+
+    // =========================================================================
+    // GESTION DU TRANSFERT ET SAUVEGARDE DE DONNÉES (EXPORT / IMPORT JSON)
+    // =========================================================================
+    initBackupManager() {
+        const btnExport = document.getElementById('btn-export-backup');
+        const btnImportTrigger = document.getElementById('btn-import-backup-trigger');
+        const fileInput = document.getElementById('backup-file-input');
+
+        // Éléments du modal d'importation
+        const modalOverlay = document.getElementById('import-modal-overlay');
+        const btnClose = document.getElementById('import-modal-close');
+        const btnCancel = document.getElementById('btn-import-cancel');
+        const btnMerge = document.getElementById('btn-import-merge');
+        const btnReplace = document.getElementById('btn-import-replace');
+        const backdrop = modalOverlay ? modalOverlay.querySelector('.import-modal-backdrop') : null;
+
+        const hideModal = () => {
+            if (modalOverlay) modalOverlay.classList.add('hidden');
+            this.pendingImportText = null;
+        };
+
+        if (btnClose) btnClose.addEventListener('click', hideModal);
+        if (btnCancel) btnCancel.addEventListener('click', hideModal);
+        if (backdrop) backdrop.addEventListener('click', hideModal);
+
+        if (btnMerge) {
+            btnMerge.addEventListener('click', () => {
+                if (!this.pendingImportText) return;
+                const text = this.pendingImportText;
+                hideModal();
+                this.executeImport(text, 'merge');
+            });
+        }
+
+        if (btnReplace) {
+            btnReplace.addEventListener('click', () => {
+                if (!this.pendingImportText) return;
+                const text = this.pendingImportText;
+                if (!confirm("⚠️ Confirmation : Voulez-vous vraiment écraser les données de ce smartphone avec cette sauvegarde ?")) {
+                    return;
+                }
+                hideModal();
+                this.executeImport(text, 'replace');
+            });
+        }
+
+        if (btnExport) {
+            btnExport.addEventListener('click', async () => {
+                await this.handleBackupExport();
+            });
+        }
+
+        if (btnImportTrigger && fileInput) {
+            btnImportTrigger.addEventListener('click', () => {
+                fileInput.value = '';
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                await this.handleBackupImport(file);
+            });
+        }
+    }
+
+    async handleBackupExport() {
+        try {
+            const backupObj = this.dm.exportBackup();
+            const jsonStr = JSON.stringify(backupObj, null, 2);
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            const fileName = `sensitrack_sauvegarde_${dateStr}.json`;
+
+            // Tentative de partage mobile direct (Quick Share, WhatsApp, Drive, E-mail, etc.)
+            let shared = false;
+            if (navigator.share && navigator.canShare) {
+                try {
+                    const file = new File([jsonStr], fileName, { type: 'application/json' });
+                    if (navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            title: 'Sauvegarde SensiTrack',
+                            text: `Sauvegarde SensiTrack du ${dateStr}`,
+                            files: [file]
+                        });
+                        this.showToast('Partage ouvert ✓');
+                        shared = true;
+                        return;
+                    }
+                } catch (shareErr) {
+                    if (shareErr.name === 'AbortError') {
+                        // Annulation volontaire par l'utilisateur du sélecteur de partage
+                        return;
+                    }
+                    console.warn('Partage direct non disponible, fallback vers le téléchargement:', shareErr);
+                }
+            }
+
+            // Fallback : téléchargement direct du fichier JSON
+            if (!shared) {
+                const blob = new Blob([jsonStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 2000);
+                this.showToast('Sauvegarde téléchargée ✓');
+            }
+        } catch (err) {
+            console.error('Erreur export sauvegarde:', err);
+            alert(`Erreur lors de l'export : ${err.message}`);
+        }
+    }
+
+    async handleBackupImport(file) {
+        try {
+            const text = await file.text();
+            
+            // Analyse et validation du fichier
+            let info;
+            try {
+                info = this.dm.parseBackup(text);
+            } catch (parseErr) {
+                alert(`Erreur dans le fichier : ${parseErr.message}`);
+                return;
+            }
+
+            // Données déjà présentes sur ce smartphone
+            const currentCycles = this.dm.getAllCycles() || [];
+            const currentEntries = currentCycles.reduce((acc, c) => acc + (c.entries ? c.entries.length : 0), 0);
+
+            // Cas 1 : Le smartphone n'a aucune donnée enregistrée (ou juste 1 cycle vide par défaut)
+            if (currentEntries === 0) {
+                const dateInfo = info.exportDate ? ` (du ${info.exportDate})` : '';
+                const msg = `Importer la sauvegarde${dateInfo} ?\n\n` +
+                    `• Cycles trouvés : ${info.cyclesCount}\n` +
+                    `• Mesures (températures/glaires) : ${info.entriesCount}\n\n` +
+                    `Vos cycles vont être restaurés sur ce smartphone.`;
+
+                if (confirm(msg)) {
+                    this.executeImport(text, 'replace');
+                }
+                return;
+            }
+
+            // Cas 2 : Le smartphone possède DÉJÀ des données -> Ouvrir le modal de choix Fusion vs Remplacement
+            this.pendingImportText = text;
+
+            const modalOverlay = document.getElementById('import-modal-overlay');
+            const elCurrentCycles = document.getElementById('modal-current-cycles');
+            const elCurrentEntries = document.getElementById('modal-current-entries');
+            const elIncomingCycles = document.getElementById('modal-incoming-cycles');
+            const elIncomingEntries = document.getElementById('modal-incoming-entries');
+
+            if (elCurrentCycles) elCurrentCycles.textContent = `${currentCycles.length} cycle${currentCycles.length > 1 ? 's' : ''}`;
+            if (elCurrentEntries) elCurrentEntries.textContent = `${currentEntries} mesure${currentEntries > 1 ? 's' : ''}`;
+            if (elIncomingCycles) elIncomingCycles.textContent = `${info.cyclesCount} cycle${info.cyclesCount > 1 ? 's' : ''}`;
+            if (elIncomingEntries) elIncomingEntries.textContent = `${info.entriesCount} mesure${info.entriesCount > 1 ? 's' : ''}`;
+
+            if (modalOverlay) {
+                modalOverlay.classList.remove('hidden');
+            } else {
+                // Fallback classique si le DOM du modal n'est pas trouvé
+                const choice = confirm(
+                    `Ce smartphone contient déjà des données (${currentCycles.length} cycles, ${currentEntries} mesures).\n\n` +
+                    `Voulez-vous FUSIONNER (Conserver vos données et ajouter les nouvelles) ?\n` +
+                    `Cliquez sur [OK] pour FUSIONNER (recommandé sans écraser).\n` +
+                    `Cliquez sur [Annuler] pour ne rien modifier.`
+                );
+                if (choice) {
+                    this.executeImport(text, 'merge');
+                }
+            }
+        } catch (err) {
+            console.error('Erreur import sauvegarde:', err);
+            alert(`Erreur lors de la lecture du fichier : ${err.message}`);
+        }
+    }
+
+    executeImport(text, mode) {
+        try {
+            const result = this.dm.importBackup(text, mode);
+
+            if (this.notifManager) {
+                this.notifManager.loadSettings();
+            }
+
+            this.editingCycleIndex = null;
+            this.refreshAll();
+
+            if (mode === 'merge') {
+                let details = '';
+                if (result.addedCyclesCount > 0) details += `+${result.addedCyclesCount} cycle(s) `;
+                if (result.addedEntriesCount > 0) details += `+${result.addedEntriesCount} mesure(s)`;
+                if (!details) details = 'Données synchronisées';
+                this.showToast(`Fusion réussie sans rien écraser ! (${details}) ✓`);
+            } else {
+                this.showToast(`Données restaurées ! (${result.cyclesCount} cycles, ${result.entriesCount} mesures) ✓`);
+            }
+        } catch (err) {
+            console.error('Erreur lors de l\'import:', err);
+            alert(`Erreur lors de l'intégration des données : ${err.message}`);
+        }
     }
         
     updateCyclesTable() {

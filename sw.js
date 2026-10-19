@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v35';
+const CACHE_VERSION = 'v37';
 const CACHE_NAME = `sensitrack-cache-${CACHE_VERSION}`;
 
 const ASSETS = [
@@ -17,6 +17,7 @@ const ASSETS = [
   './js/notificationManager.js'
 ];
 
+// Force le nouveau SW à prendre le contrôle IMMÉDIATEMENT
 self.addEventListener('install', event => {
   self.skipWaiting();
   event.waitUntil(
@@ -26,6 +27,7 @@ self.addEventListener('install', event => {
   );
 });
 
+// Nettoie les anciens caches au activate
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => {
@@ -36,8 +38,11 @@ self.addEventListener('activate', event => {
   );
 });
 
+// Fetch : network first + mise en cache
 self.addEventListener('fetch', event => {
+  // Ignorer les requêtes non GET ou externes si besoin
   if (event.request.method !== 'GET') return;
+
   event.respondWith(
     fetch(event.request).then(response => {
       if (response && response.status === 200 && response.type === 'basic') {

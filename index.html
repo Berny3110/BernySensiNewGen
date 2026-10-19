@@ -225,6 +225,52 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Section Transfert & Sauvegarde des données -->
+            <div class="backup-transfer-card">
+                <div class="backup-card-header">
+                    <div class="backup-card-title">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        <span>Transférer ou Sauvegarder les données</span>
+                    </div>
+                    <p class="backup-card-subtitle">Idéal pour transférer vos cycles et températures entre votre Pixel et votre Samsung S25 sans rien perdre.</p>
+                </div>
+
+                <div class="backup-btn-grid">
+                    <button type="button" id="btn-export-backup" class="btn-backup-action btn-backup-export" title="Exporter les données pour les transférer sur un autre appareil">
+                        <div class="backup-action-icon">📤</div>
+                        <div class="backup-action-text">
+                            <strong>Exporter / Sauvegarder</strong>
+                            <span>Partager directement (Quick Share, WhatsApp, Drive) ou télécharger</span>
+                        </div>
+                    </button>
+
+                    <button type="button" id="btn-import-backup-trigger" class="btn-backup-action btn-backup-import" title="Importer une sauvegarde sur ce smartphone">
+                        <div class="backup-action-icon">📥</div>
+                        <div class="backup-action-text">
+                            <strong>Importer / Restaurer</strong>
+                            <span>Charger un fichier .json reçu sur ce smartphone</span>
+                        </div>
+                    </button>
+                    <input type="file" id="backup-file-input" accept=".json,application/json" style="display: none;">
+                </div>
+
+                <details class="backup-guide-details">
+                    <summary class="backup-guide-summary">
+                        <span>📲 Comment transférer vers un autre smartphone ? (Guide étape par étape)</span>
+                    </summary>
+                    <ol class="backup-steps-list">
+                        <li><strong>Sur le smartphone d'origine (Pixel 9 Pro) :</strong> cliquez sur <em>Exporter / Sauvegarder</em> ci-dessus.</li>
+                        <li>Choisissez <strong>Quick Share</strong> (le partage sans fil direct entre Android), <strong>WhatsApp</strong>, <strong>Google Drive</strong> ou <strong>E-mail</strong> pour envoyer le fichier <code>.json</code> sur votre nouveau téléphone.</li>
+                        <li><strong>Sur le nouveau smartphone (Samsung S25) :</strong> enregistrez le fichier reçu.</li>
+                        <li>Ouvrez SensiTrack sur le S25, allez dans l'onglet <strong>Cycles</strong>, cliquez sur <strong>Importer / Restaurer</strong> et sélectionnez le fichier. Vos données sont immédiatement restaurées !</li>
+                    </ol>
+                </details>
+            </div>
         </section>
     </main>
 
@@ -258,6 +304,64 @@
             </div>
             <div class="canvas-scroll-container" id="canvas-scroll-container">
                 <canvas id="paperChartCanvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de choix d'importation (Fusionner ou Remplacer) -->
+    <div id="import-modal-overlay" class="import-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="import-modal-title">
+        <div class="import-modal-backdrop"></div>
+        <div class="import-modal-content">
+            <div class="import-modal-header">
+                <div class="import-modal-title-wrap">
+                    <span class="import-modal-icon">📥</span>
+                    <h3 id="import-modal-title">Importer des données</h3>
+                </div>
+                <button type="button" id="import-modal-close" class="import-modal-close-btn" aria-label="Fermer">✕</button>
+            </div>
+
+            <div class="import-modal-body">
+                <div class="import-summary-boxes">
+                    <div class="import-summary-box current">
+                        <span class="summary-box-tag">Sur ce smartphone</span>
+                        <strong id="modal-current-cycles">0 cycle</strong>
+                        <span id="modal-current-entries" class="summary-box-sub">0 mesure</span>
+                    </div>
+                    <div class="import-summary-arrow">➔</div>
+                    <div class="import-summary-box incoming">
+                        <span class="summary-box-tag">Dans la sauvegarde</span>
+                        <strong id="modal-incoming-cycles">0 cycle</strong>
+                        <span id="modal-incoming-entries" class="summary-box-sub">0 mesure</span>
+                    </div>
+                </div>
+
+                <p class="import-modal-question">Comment souhaitez-vous intégrer cette sauvegarde ?</p>
+
+                <div class="import-options-list">
+                    <button type="button" id="btn-import-merge" class="import-option-card recommended">
+                        <div class="import-option-header">
+                            <span class="import-option-badge">Recommandé</span>
+                            <div class="import-option-title">🔄 Fusionner les données</div>
+                        </div>
+                        <div class="import-option-desc">
+                            <strong>N'écrase rien !</strong> Conserve toutes vos mesures actuelles et ajoute les cycles et dates du fichier. Les jours communs sont complétés intelligemment.
+                        </div>
+                    </button>
+
+                    <button type="button" id="btn-import-replace" class="import-option-card danger">
+                        <div class="import-option-header">
+                            <span class="import-option-badge badge-danger">Écrase tout</span>
+                            <div class="import-option-title">⚠️ Remplacer tout</div>
+                        </div>
+                        <div class="import-option-desc">
+                            Supprime les données actuelles de ce smartphone pour installer une copie exacte conforme au fichier importé.
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <div class="import-modal-footer">
+                <button type="button" id="btn-import-cancel" class="btn-cancel-import">Annuler</button>
             </div>
         </div>
     </div>
